@@ -8,4 +8,4 @@ Created on Wed Jul 26 09:07:14 2017
 import timeit
 import Main as mn
 
-mn.main('20170222_07_48_55_Uber.xlsx','20170222_07_48_55_Uber','GPS')
+mn.main('../data/20170222_07_48_55_Uber.xlsx','../data/20170222_07_48_55_Uber','GPS')
