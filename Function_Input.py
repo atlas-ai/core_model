@@ -7,6 +7,60 @@ Created on Mon Apr 17 08:24:15 2017
 import pandas as pd
 import numpy as np
 import timeit
+import quaternion as qtr
+
+gps_columns_conversion = {
+    'timesstamp(unix)': 't',
+    'latitude(degree)': 'lat',
+    'longitude(degree)': 'long',
+    'altitude(meter)': 'alt',
+    'speed(m/s)': 'speed',
+    'course(degree)': 'course'
+}
+
+imu_columns_conversion = {
+    'timestamp(unix)': 't',
+    'attitude_pitch(radians)': 'att_pitch',
+    'attitude_roll(radians)': 'att_roll',
+    'attitude_yaw(radians)': 'att_yaw',
+    'rotation_rate_x(radians/s)': 'rot_rate_x',
+    'rotation_rate_y(radians/s)': 'rot_rate_y',
+    'rotation_rate_z(radians/s)': 'rot_rate_z',
+    'gravity_x(G)': 'g_x',
+    'gravity_y(G)': 'g_y',
+    'gravity_z(G)': 'g_z',
+    'user_acc_x(G)': 'user_a_x',
+    'user_acc_y(G)': 'user_a_y',
+    'user_acc_z(G)':  'user_a_z',
+    'magnetic_field_x(microteslas)': 'm_x',
+    'magnetic_field_y(microteslas)': 'm_y',
+    'magnetic_field_z(microteslas)': 'm_z',
+}
+
+
+def to_quaternion(x, y, z, s=None):
+    """ convert single coordinates into quaternion
+
+    all inputs are pd.Series output is pd.Series
+
+    :param x: x coordinate
+    :param y: y coordinate
+    :param z: z coordinate
+    :param s: scalar coordinate, 0 if omited
+    :return: series of quaternion coordinate with same index as input
+    """
+    if s is None:
+        s = pd.Series(0.,index=x.index)
+    df = pd.DataFrame({'s': s, 'x': x, 'y': y, 'z': z},
+                      columns=['s', 'x', 'y', 'z'])
+    val = df.values
+    val_q = qtr.as_quat_array(val)
+    res = pd.Series(val_q, index=df.index)
+    return res
+
+
+
+
 
 
 def input_IMU(FileName, IMU, GPS):
