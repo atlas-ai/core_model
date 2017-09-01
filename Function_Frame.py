@@ -57,7 +57,7 @@ def ypr_to_frame(yawn, pitch, roll):
     return res
 
 
-def v1_to_v2(v_origin, v_dest):
+def rotate_vec(v_origin, v_dest):
     """ Generate quaternion rotating v_origin to v_dest
 
     This is not uniquely defined,
@@ -91,7 +91,7 @@ def v1_to_v2(v_origin, v_dest):
     return res
 
 
-def v1v2_to_v3v4(v_origin1, v_dest1, v_origin2, v_dest2):
+def rotate_2vec(v_origin1, v_dest1, v_origin2, v_dest2):
     """ Generate quaternion rotating v_origin1 to v_dest1 and v_origin2 to v_dest2
 
     works if v_origin1 and v_origin2 are orthogonal and so are v_dest1 and v_dest2
@@ -103,11 +103,11 @@ def v1v2_to_v3v4(v_origin1, v_dest1, v_origin2, v_dest2):
     :return: rotation quaternion
     """
 
-    r1 = v1_to_v2(v_origin1, v_dest1)
+    r1 = rotate_vec(v_origin1, v_dest1)
 
     v_o2 = r1 * v_origin2 * np.conjugate(r1)
 
-    r2 = v1_to_v2(v_o2, v_dest2)
+    r2 = rotate_vec(v_o2, v_dest2)
 
     res = r2 * r1
 
@@ -121,9 +121,9 @@ def mag_grav_to_frame(g, m):
     :param m: magnetic field as a quaternion
     :return: frame as a quaternion
     """
-    g_dest = qtr.quaternion(0, 0, 0, 1)  # gravity toward z in the geoframe
-    m_dest = qtr.quaternion(0, 1, 0, 0) # mag field toward x in the geoframe
-    res = v1v2_to_v3v4(g, g_dest, m, m_dest)
+    # gravity toward z in the geoframe
+    y = fmat.cross(g, m)  # y direction in geoframe normal to g and m
+    res = rotate_2vec(g, qtr.z, y, qtr.y)
     return res
 
 

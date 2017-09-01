@@ -38,31 +38,6 @@ imu_columns_conversion = {
 }
 
 
-def to_quaternion(x, y, z, s=None):
-    """ convert single coordinates into quaternion
-
-    all inputs are pd.Series output is pd.Series
-
-    :param x: x coordinate
-    :param y: y coordinate
-    :param z: z coordinate
-    :param s: scalar coordinate, 0 if omited
-    :return: series of quaternion coordinate with same index as input
-    """
-    if s is None:
-        s = pd.Series(0.,index=x.index)
-    df = pd.DataFrame({'s': s, 'x': x, 'y': y, 'z': z},
-                      columns=['s', 'x', 'y', 'z'])
-    val = df.values
-    val_q = qtr.as_quat_array(val)
-    res = pd.Series(val_q, index=df.index)
-    return res
-
-
-
-
-
-
 def input_IMU(FileName, IMU, GPS):
     start = timeit.default_timer()
     
