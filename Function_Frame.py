@@ -7,9 +7,63 @@ Created on Sun Apr 30 10:21:04 2017
 
 import pandas as pd
 import numpy as np
-import Function_Math as fmat
+import Function_Math as fmt
 import timeit
 import quaternion as qtr
+
+
+def car_acceleration(rot_rate_x, rot_rate_y, rot_rate_z,
+                     user_a_x, user_a_y, user_a_z,
+                     g_x, g_y, g_z,
+                     m_x, m_y, m_z, course):
+    """ provides the rotation rate and acceleration in the car frame
+
+    the function expect pandas series with a time index as its arguments
+    All parameter from the imu supposed are to be with the same index.
+    The result is indexed by the index of the imu data
+    
+    see the frame reference document for the meaning of the axis
+
+    :param rot_rate_x: imu rotation rate around x
+    :param rot_rate_y: imu rotation rate around y
+    :param rot_rate_z: imu rotation rate around z
+    :param user_a_x: imu user acceleration toward x
+    :param user_a_y: imu user acceleration toward y
+    :param user_a_z: imu user acceleration toward z
+    :param g_x: imu gravity component toward x
+    :param g_y: imu gravity component toward y
+    :param g_z: imu gravity component toward z
+    :param m_x: imu magnetic field component toward x
+    :param m_y: imu magnetic field component toward y
+    :param m_z: imu magnetic field component toward z
+    :param course: gps course in radians
+    :return: 
+    """
+
+    i = rot_rate_x.index
+    course = fmt.smooth_angle(course)
+    course_imu = fmt.interpolate_to_index(course,i,method='time')
+    car_to_geo = course_to_frame(course_imu)
+
+    g = fmt.to_quaternion(g_x, g_y, g_z)
+    m = fmt.to_quaternion(m_x, m_y, m_z)
+    phone_to_geo = mag_grav_to_frame(g, m)
+
+    phone_to_car = np.invert(car_to_geo) * phone_to_geo
+
+    user_a_phone = fmt.to_quaternion(user_a_x, user_a_y , user_a_z)
+    user_a_car = phone_to_car * user_a_phone * np.invert(phone_to_car)
+    user_a_car_v = fmt.from_quaternion(user_a_car, label='acc_')
+    # we drop the scalar part it contains no information (always 0)
+    user_a_car_v.drop(['acc_s'], inplace=True, axis=1)
+
+    r_rate_phone = fmt.to_quaternion(rot_rate_x, rot_rate_y, rot_rate_z)
+    r_rate_car = phone_to_car * r_rate_phone * np.invert(phone_to_car)
+    r_rate_car_v = fmt.from_quaternion(r_rate_car,label='r_rate_')
+    r_rate_car_v.drop(['r_rate_s'],inplace=True, axis=1)
+
+    res = pd.concat([user_a_car_v, r_rate_car_v],axis = 1)
+    return res
 
 
 def course_to_frame(course):
@@ -122,7 +176,7 @@ def mag_grav_to_frame(g, m):
     :return: frame as a quaternion
     """
     # gravity toward z in the geoframe
-    y = fmat.cross(g, m)  # y direction in geoframe normal to g and m
+    y = fmt.cross(g, m)  # y direction in geoframe normal to g and m
     res = rotate_2vec(g, qtr.z, y, qtr.y)
     return res
 
@@ -182,21 +236,21 @@ def Frame_Conversion(df, freq):
 ##############################################################################################################################
 
     #Normalising to get uG, uB, uE and uN
-    uG = fmat.DataNorm(gx, gy, gz)
+    uG = fmt.DataNorm(gx, gy, gz)
     uGx = uG['x']
     uGy = uG['y']
     uGz = uG['z']
-    uB = fmat.DataNorm(mx, my, mz)
+    uB = fmt.DataNorm(mx, my, mz)
     #uBx = uB['x']
     #uBy = uB['y']
     #uBz = uB['z']
     E = np.cross(uG, uB)
-    uE = fmat.DataNorm(E[:,0], E[:,1], E[:,2])
+    uE = fmt.DataNorm(E[:,0], E[:,1], E[:,2])
     uEx = uE['x']
     uEy = uE['y']
     uEz = uE['z']
     N = np.cross(uE, uG)
-    uN = fmat.DataNorm(N[:,0], N[:,1], N[:,2])
+    uN = fmt.DataNorm(N[:,0], N[:,1], N[:,2])
     uNx = uN['x']
     uNy = uN['y']
     uNz = uN['z']
@@ -209,9 +263,9 @@ def Frame_Conversion(df, freq):
 ##############################################################################################################################
 
     #Convert Euler angles to quaternions and integrate rotation rates to obtain changes in rotation
-    q = fmat.EulerToQuaternion(pitch, roll, yaw)
-    qdt = fmat.IntegrationOfAngularVelocity(rotx, roty, rotz, q, deltaT)
-    Dynamic_Conversion_Matrix = fmat.QuaternionToRotMatrix(qdt)
+    q = fmt.EulerToQuaternion(pitch, roll, yaw)
+    qdt = fmt.IntegrationOfAngularVelocity(rotx, roty, rotz, q, deltaT)
+    Dynamic_Conversion_Matrix = fmt.QuaternionToRotMatrix(qdt)
 
     Conversion_Matrix = Static_Conversion_Matrix + Dynamic_Conversion_Matrix
 

@@ -38,6 +38,34 @@ imu_columns_conversion = {
 }
 
 
+def clean_input_gps(df):
+    """ clean the inputs from gps
+
+    :param df: raw data dataframe
+    :return: cleaned dataframe
+    """
+    new_col = pd.Series(df.columns).map(gps_columns_conversion)
+    df.columns = new_col
+    df['course'] = df['course'].replace({-1.: np.nan})
+    df['course'] = np.radians(df['course'])
+    df.index = pd.to_datetime(df['t'], unit='s')
+    return df
+
+
+def clean_input_imu(df):
+    """ clean the inputs from imu
+
+    :param df: raw data dataframe
+    :return: cleaned dataframe
+    """
+    new_col = pd.Series(df.columns).map(imu_columns_conversion)
+    df.columns = new_col
+    df.index = pd.to_datetime(df['t'], unit='s')
+    return df
+
+
+
+
 def input_IMU(FileName, IMU, GPS):
     start = timeit.default_timer()
     
