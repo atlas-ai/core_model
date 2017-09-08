@@ -49,6 +49,7 @@ def clean_input_gps(df):
     df['course'] = df['course'].replace({-1.: np.nan})
     df['course'] = np.radians(df['course'])
     df.index = pd.to_datetime(df['t'], unit='s')
+    df = df[~df.index.duplicated()]  # drop duplicated index
     return df
 
 
@@ -61,6 +62,7 @@ def clean_input_imu(df):
     new_col = pd.Series(df.columns).map(imu_columns_conversion)
     df.columns = new_col
     df.index = pd.to_datetime(df['t'], unit='s')
+    df = df[~df.index.duplicated()]  # drop duplicated index
     return df
 
 

@@ -42,7 +42,7 @@ def car_acceleration(rot_rate_x, rot_rate_y, rot_rate_z,
 
     i = rot_rate_x.index
     course = fmt.smooth_angle(course)
-    course_imu = fmt.interpolate_to_index(course,i,method='time')
+    course_imu = fmt.interpolate_to_index(course, i, method='time')
     car_to_geo = course_to_frame(course_imu)
 
     g = fmt.to_quaternion(g_x, g_y, g_z)
@@ -63,6 +63,7 @@ def car_acceleration(rot_rate_x, rot_rate_y, rot_rate_z,
     r_rate_car_v.drop(['r_rate_s'],inplace=True, axis=1)
 
     res = pd.concat([user_a_car_v, r_rate_car_v],axis = 1)
+    res['course'] = course_imu
     return res
 
 
