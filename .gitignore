@@ -102,3 +102,6 @@ ENV/
 
 conda/
 .DS_Store
+
+# PyCharm
+.idea
