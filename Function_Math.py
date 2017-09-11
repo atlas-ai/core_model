@@ -23,8 +23,8 @@ def smooth_angle(theta):
     :param theta: angle in radian
     :return: smooted series
     """
-    up_count = (theta.diff() > 3.5).cumsum()
-    down_count = (theta.diff() < -3.5).cumsum()
+    up_count = (theta.diff() > 3.14).cumsum()
+    down_count = (theta.diff() < -3.14).cumsum()
     level = up_count - down_count
     res = theta - level*2*np.pi
     return res
