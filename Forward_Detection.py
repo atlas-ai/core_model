@@ -8,7 +8,8 @@ Created on Sun Sep 10 15:24:26 2017
 
 import pandas as pd
 import numpy as np
-import Func_Math as fmt
+import quaternion_extra as fmt
+import distributions
 
 
 def read_param(csv_file):
@@ -101,7 +102,7 @@ def turn_detection(rot_z, crs, spd, param):
                     dataVar[j+2*dataPoints] = rot_z.index.values[idx]
                     
                 
-                event_prob = fmt.predict_prob_sigmoid(dataVar[0:2*dataPoints+1], param[0])
+                event_prob = distributions.predict_prob_sigmoid(dataVar[0:2 * dataPoints + 1], param[0])
                     
                 if (event_prob >= turn_max_prob) and (event_prob >= pro_threshold):
                     turn_max_prob=event_prob
@@ -145,7 +146,7 @@ def turn_detection(rot_z, crs, spd, param):
                     dataVar[j+2*dataPoints] = rot_z.index.values[idx]
                     
                 
-                event_prob = fmt.predict_prob_sigmoid(dataVar[0:2*dataPoints+1], param[1])
+                event_prob = distributions.predict_prob_sigmoid(dataVar[0:2 * dataPoints + 1], param[1])
                     
                 if (event_prob >= turn_max_prob) and (event_prob >= pro_threshold):
                     turn_max_prob=event_prob

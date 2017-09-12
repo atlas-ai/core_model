@@ -9,17 +9,12 @@ Created on Sat Sep  9 12:56:26 2017
 
 import numpy as np
 import pandas as pd
-pd.set_option('display.max_rows',7) #only visualise 7 rows when displaying tables
-pd.set_option('display.max_columns',50)
-import cufflinks as cf
-cf.go_offline()
-cf.set_config_file(theme='white')
 
-import quaternion as qtr
-import Func_Input as fin
-import Func_Frame as ffc
-import Func_Detection as fdet
-import Func_Math as fmt
+
+import cleaning as fin
+import frame as ffc
+import detection as fdet
+
 
 import glob
 import os
@@ -31,21 +26,23 @@ folder = "/Users/Sean_Xin_Zhou/Documents/GitHub/data/Test Data/02 Data Checked/"
 pattern = folder + '*_Checked.xlsx'
 files = glob.glob(pattern)
 
+
 def output_name(filename):
     dirname = os.path.dirname(filename)
     basename = os.path.splitext(os.path.basename(filename))[0]
     base_id = basename.replace("_Checked","")
     filename_out = os.path.join(dirname ,base_id + "_acc.xlsx") # change here the extention of the output file name
     return base_id, filename_out
-    
+
+
 def write_acc(filename,n_smooth=100):
     base_id, filename_out = output_name(filename)
     gps_sheet = "GPS"
     imu_sheet = "IMU"
     #imu_sheet = base_id + "_Drive" # uncomment this line if the imu data is labeled with the workbook name
     res = pd.read_excel(filename,sheetname=[gps_sheet,imu_sheet])
-    gps = fin.clean_input_gps(res[gps_sheet])
-    imu = fin.clean_input_imu(res[imu_sheet])
+    gps = fin.gps_data(res[gps_sheet])
+    imu = fin.imu_data(res[imu_sheet])
     acc = ffc.car_acceleration(imu['rot_rate_x'], imu['rot_rate_y'], imu['rot_rate_z'],\
                             imu['user_a_x'], imu['user_a_y'], imu['user_a_z'],\
                             imu['g_x'], imu['g_y'], imu['g_z'],\

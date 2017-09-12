@@ -8,7 +8,9 @@ Created on Sat Sep  9 13:02:27 2017
 
 import pandas as pd
 import numpy as np
-import Func_Math as fmt
+import quaternion_extra as fmt
+import distributions
+
 
 def read_param(csv_file):
     param = np.asarray(pd.read_csv(csv_file, index_col=0)).transpose()
@@ -93,7 +95,7 @@ def Event_Detection(rot_z, crs, spd, param):
                 rotz_end = dataVar[50] 
             
                 #Calculate probability for data segment
-                event_prob = fmt.predict_prob_sigmoid(dataVar[0:2*dataPoints+1], param[k])
+                event_prob = distributions.predict_prob_sigmoid(dataVar[0:2 * dataPoints + 1], param[k])
                                             
                 #Identify events with pre-defined criteria
                 if ((event_prob >= pro_threshold) and (np.abs(rotz_beg) <= rotz_threshold) and (np.abs(rotz_end) <= rotz_threshold)):

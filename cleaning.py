@@ -39,7 +39,7 @@ imu_columns_conversion = {
 }
 
 
-def clean_input_gps(df):
+def gps_data(df):
     """ clean the inputs from gps
 
     :param df: raw data dataframe
@@ -55,7 +55,7 @@ def clean_input_gps(df):
     return df
 
 
-def clean_input_imu(df):
+def imu_data(df):
     """ clean the inputs from imu
 
     :param df: raw data dataframe

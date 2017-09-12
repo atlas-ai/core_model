@@ -8,8 +8,10 @@ Created on Sat Sep  9 12:54:58 2017
 
 import pandas as pd
 import numpy as np
-import Func_Math as fmt
+import quaternion_extra as qextra
 import quaternion as qtr
+
+import interpolation
 
 
 def car_acceleration(rot_rate_x, rot_rate_y, rot_rate_z,
@@ -41,26 +43,26 @@ def car_acceleration(rot_rate_x, rot_rate_y, rot_rate_z,
     """
 
     i = rot_rate_x.index
-    course = fmt.smooth_angle(course)
-    course_imu = fmt.interpolate_to_index(course, i, method='time')
-    speed_imu = fmt.interpolate_to_index(speed, i, method='time')
+    course = interpolation.smooth_angle(course)
+    course_imu = interpolation.interpolate_to_index(course, i, method='time')
+    speed_imu = interpolation.interpolate_to_index(speed, i, method='time')
     car_to_geo = course_to_frame(course_imu)
 
-    g = fmt.to_quaternion(g_x, g_y, g_z)
-    m = fmt.to_quaternion(m_x, m_y, m_z)
+    g = qextra.to_quaternion(g_x, g_y, g_z)
+    m = qextra.to_quaternion(m_x, m_y, m_z)
     phone_to_geo = mag_grav_to_frame(g, m)
 
     phone_to_car = np.invert(car_to_geo) * phone_to_geo
 
-    user_a_phone = fmt.to_quaternion(user_a_x, user_a_y , user_a_z)
+    user_a_phone = qextra.to_quaternion(user_a_x, user_a_y, user_a_z)
     user_a_car = phone_to_car * user_a_phone * np.invert(phone_to_car)
-    user_a_car_v = fmt.from_quaternion(user_a_car, label='acc_')
+    user_a_car_v = qextra.from_quaternion(user_a_car, label='acc_')
     # we drop the scalar part it contains no information (always 0)
     user_a_car_v.drop(['acc_s'], inplace=True, axis=1)
 
-    r_rate_phone = fmt.to_quaternion(rot_rate_x, rot_rate_y, rot_rate_z)
+    r_rate_phone = qextra.to_quaternion(rot_rate_x, rot_rate_y, rot_rate_z)
     r_rate_car = phone_to_car * r_rate_phone * np.invert(phone_to_car)
-    r_rate_car_v = fmt.from_quaternion(r_rate_car,label='r_rate_')
+    r_rate_car_v = qextra.from_quaternion(r_rate_car, label='r_rate_')
     r_rate_car_v.drop(['r_rate_s'],inplace=True, axis=1)
 
     res = pd.concat([user_a_car_v, r_rate_car_v],axis = 1)
@@ -179,6 +181,6 @@ def mag_grav_to_frame(g, m):
     :return: frame as a quaternion
     """
     # gravity toward z in the geoframe
-    y = fmt.cross(g, m)  # y direction in geoframe normal to g and m
+    y = qextra.cross(g, m)  # y direction in geoframe normal to g and m
     res = rotate_2vec(g, qtr.z, y, qtr.y)
     return res
