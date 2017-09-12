@@ -20,16 +20,16 @@ class Worker(Process):
 
             print(data)
 
-            # Query needed measurements data (add 15 seconds more for overlap data)
+            # Query needed measurements data (add 15 seconds (15000 millis) more for overlap data)
             query = """
                         SELECT *
                         FROM measurement
-                        WHERE (data->>'timestamp')::timestamp >= ('{timestamp_from}'::timestamp - '15 seconds'::interval)
-                            AND (data->>'timestamp')::timestamp <= '{timestamp_to}'
-                            AND (data->>'track_id')::int = {track_id}
+                        WHERE (data->>'t')::bigint >= ('{timestamp_from}'::bigint - 15000)
+                            AND (data->>'t')::bigint <= '{timestamp_to}'
+                            AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
                     """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
-                               timestamp_to=data['payload']['data']['timestamp'],
-                               track_id=data['payload']['data']['track_id'])
+                               timestamp_to=data['payload']['data']['t'],
+                               track_uuid=data['payload']['data']['track_uuid'])
 
             df = pd.read_sql_query(query, con=self.engine)
             print(df.head())
