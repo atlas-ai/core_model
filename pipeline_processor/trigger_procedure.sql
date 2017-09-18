@@ -1,7 +1,7 @@
 CREATE OR REPLACE FUNCTION table_insert_notify() RETURNS trigger AS $$
 DECLARE
     insert_row_timestamp bigint;
-    insert_row_track_uuid uuid;
+    insert_row_track_uuid text;
     oldest_unprocessed_timestamp bigint;
     notification json;
 BEGIN
@@ -13,7 +13,7 @@ BEGIN
     INTO oldest_unprocessed_timestamp
     FROM measurement
     WHERE NOT processed
-        AND (data->>'track_uuid')::uuid = insert_row_track_uuid;
+        AND (data->>'track_uuid') = insert_row_track_uuid;
 
     IF (insert_row_timestamp - oldest_unprocessed_timestamp >= 45000)
     THEN
