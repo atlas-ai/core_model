@@ -1,12 +1,13 @@
 import os
 import json
 import pandas as pd
-import frame as ffc
 import cleaning as fin
 
+from work_flow import convert_frame
 from multiprocessing import Process
 from sqlalchemy import create_engine
-from Main import detection_model
+from work_flow import apply_filter, event_detection_model, acc_detection_model, evt_evaluation_model, \
+    acc_evaluation_model, evaluation_summary
 
 
 class Worker(Process):
@@ -21,7 +22,8 @@ class Worker(Process):
         for data in iter(self.queue.get, None):
             data = json.loads(data)
 
-            print(data)
+            print('\n\n', data['payload']['data']['track_uuid'])
+            print(data['payload']['data']['t'])
 
             # Query needed measurements data (add 15 seconds (15000 millis) more for overlap data)
             query = """
@@ -45,21 +47,18 @@ class Worker(Process):
                                 'g_x', 'g_y', 'g_z', 'user_a_x', 'user_a_y', 'user_a_z', 'm_x', 'm_y', 'm_z']]
 
             gps = fin.gps_data(gps_data)
-            print('\n\nGPS\n', gps)
             imu = fin.imu_data(imu_data)
-            print('\n\nIMU\n', imu)
 
-            acc = ffc.car_acceleration(imu['rot_rate_x'], imu['rot_rate_y'], imu['rot_rate_z'], imu['user_a_x'],
-                                       imu['user_a_y'], imu['user_a_z'], imu['g_x'], imu['g_y'], imu['g_z'], imu['m_x'],
-                                       imu['m_y'], imu['m_z'], gps['course'], gps['speed'])
+            df_fc = convert_frame(imu, gps)
+            acc_x, acc_y, rot_z, crs, spd = apply_filter(df_fc, n_smooth=100)
+            df_evt = event_detection_model(rot_z, crs, spd)
+            df_acc = acc_detection_model(acc_x, crs, spd, z_threshold=6)
+            df_evt_eva = evt_evaluation_model(acc_x, acc_y, spd, df_evt)
+            df_acc_eva = acc_evaluation_model(df_acc, z_threshold=6)
+            df_sum = evaluation_summary(data['payload']['data']['track_uuid'], df_evt_eva, df_acc_eva)
 
-            n_smooth = 100
-            acc_smooth = acc.rolling(n_smooth).mean()
-            print('\n\nACC SMOOTH\n', acc_smooth)
+            print(df_sum.columns)
+            print(df_sum.head())
 
-            # Calling Main.detection_model()
-            df_evt = detection_model(acc_smooth)
-            print('\n\nDF EVENT\n', df_evt)
-
-            if not df_evt.empty:
-                df_evt.to_sql(name='detected_events', con=self.engine, if_exists='append')
+            if not df_sum.empty:
+                df_sum.to_sql(name='detected_events', con=self.engine, if_exists='append')

@@ -48,7 +48,6 @@ if __name__ == '__main__':
             conn.poll()
             while conn.notifies:
                 notify = conn.notifies.pop(0)
-                print("Got NOTIFY:", notify.pid, notify.channel)
 
                 # Send data to worker
                 queue.put(notify.payload)
