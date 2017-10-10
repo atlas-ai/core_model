@@ -8,26 +8,10 @@ Created on Sat Sep  9 13:02:27 2017
 
 import pandas as pd
 import numpy as np
-import quaternion_extra as fmt
 import distributions
 
 
-def read_param(csv_file):
-    param = np.asarray(pd.read_csv(csv_file, index_col=0)).transpose()
-    return param
-
-
-def read_df(df):
-    #df = pd.read_excel(file_name)
-    #df.set_index(['t'], inplace=True)
-    df = df.dropna(how='all')
-    rot_z = df['r_rate_z']
-    crs = df['course']
-    spd = df['speed']
-    return rot_z, crs, spd
-
-
-def Event_Detection(rot_z, crs, spd, param):
+def event_detection(rot_z, crs, spd, param):
     
     dataLen = rot_z.shape[0]
     dataPoints = 50
@@ -35,8 +19,9 @@ def Event_Detection(rot_z, crs, spd, param):
     rotz_threshold = 0.02
     
     #Create empty data frame to store event data (RTT, LTT, LCR, LCL)
-    df_event = pd.DataFrame(np.nan, index=np.arange(1000), columns=['Type','Duration(s)','Start_Index','End_Index','Start_Timestamp','End_Timestamp',\
-                            'Start_Spd(km/h)','End_Spd(km/h)','Acceleration(m/s2)','Start_Course','End_Course','Probability'])    
+    df_event = pd.DataFrame(np.nan, index=np.arange(1000), columns=['type','d','s_idx','e_idx','s_timestamp','e_timestamp',\
+                            's_spd','e_spd','ave_acc','s_crs','e_crs','prob'])  
+    
     event_no = 1
            
     #TOP LOOP:
@@ -115,24 +100,24 @@ def Event_Detection(rot_z, crs, spd, param):
                     else:
                         #Data entry when time of event changes
                         if k==0:
-                            df_event.iloc[event_no-1, df_event.columns.get_loc('Type')] = 'RTT'
+                            df_event.iloc[event_no-1, df_event.columns.get_loc('type')] = 'RTT'
                         elif k==1:
-                            df_event.iloc[event_no-1, df_event.columns.get_loc('Type')] = 'LTT'
+                            df_event.iloc[event_no-1, df_event.columns.get_loc('type')] = 'LTT'
                         elif k==2:
-                            df_event.iloc[event_no-1, df_event.columns.get_loc('Type')] = 'LCR'
+                            df_event.iloc[event_no-1, df_event.columns.get_loc('type')] = 'LCR'
                         elif k==3:
-                            df_event.iloc[event_no-1, df_event.columns.get_loc('Type')] = 'LCL'
-                        df_event.iloc[event_no-1, df_event.columns.get_loc('Duration(s)')] = stepSize/2
-                        df_event.iloc[event_no-1, df_event.columns.get_loc('Start_Index')] = beg_idx
-                        df_event.iloc[event_no-1, df_event.columns.get_loc('End_Index')] = end_idx
-                        df_event.iloc[event_no-1, df_event.columns.get_loc('Start_Timestamp')] = beg_timestamp
-                        df_event.iloc[event_no-1, df_event.columns.get_loc('End_Timestamp')] = end_timestamp
-                        df_event.iloc[event_no-1, df_event.columns.get_loc('Start_Spd(km/h)')] = beg_spd*3.6
-                        df_event.iloc[event_no-1, df_event.columns.get_loc('End_Spd(km/h)')] = end_spd*3.6
-                        df_event.iloc[event_no-1, df_event.columns.get_loc('Acceleration(m/s2)')] = (end_spd-beg_spd)/(stepSize/2)
-                        df_event.iloc[event_no-1, df_event.columns.get_loc('Start_Course')] = beg_crs
-                        df_event.iloc[event_no-1, df_event.columns.get_loc('End_Course')] = end_crs
-                        df_event.iloc[event_no-1, df_event.columns.get_loc('Probability')] = event_max_prob                         
+                            df_event.iloc[event_no-1, df_event.columns.get_loc('type')] = 'LCL'
+                        df_event.iloc[event_no-1, df_event.columns.get_loc('d')] = stepSize/2
+                        df_event.iloc[event_no-1, df_event.columns.get_loc('s_idx')] = beg_idx
+                        df_event.iloc[event_no-1, df_event.columns.get_loc('e_idx')] = end_idx
+                        df_event.iloc[event_no-1, df_event.columns.get_loc('s_timestamp')] = beg_timestamp
+                        df_event.iloc[event_no-1, df_event.columns.get_loc('e_timestamp')] = end_timestamp
+                        df_event.iloc[event_no-1, df_event.columns.get_loc('s_spd')] = beg_spd
+                        df_event.iloc[event_no-1, df_event.columns.get_loc('e_spd')] = end_spd
+                        df_event.iloc[event_no-1, df_event.columns.get_loc('ave_acc')] = (end_spd-beg_spd)/(stepSize/2)/3.6/9.8
+                        df_event.iloc[event_no-1, df_event.columns.get_loc('s_crs')] = beg_crs
+                        df_event.iloc[event_no-1, df_event.columns.get_loc('e_crs')] = end_crs
+                        df_event.iloc[event_no-1, df_event.columns.get_loc('prob')] = event_max_prob                         
                         event_no += 1 
                     
                         #Set values for a new event
@@ -150,101 +135,215 @@ def Event_Detection(rot_z, crs, spd, param):
             #Data entry when step size changes
             if event_max_prob!=0.0:    
                 if k==0:
-                    df_event.iloc[event_no-1, df_event.columns.get_loc('Type')] = 'RTT'
+                    df_event.iloc[event_no-1, df_event.columns.get_loc('type')] = 'RTT'
                 elif k==1:
-                    df_event.iloc[event_no-1, df_event.columns.get_loc('Type')] = 'LTT'
+                    df_event.iloc[event_no-1, df_event.columns.get_loc('type')] = 'LTT'
                 elif k==2:
-                    df_event.iloc[event_no-1, df_event.columns.get_loc('Type')] = 'LCR'
+                    df_event.iloc[event_no-1, df_event.columns.get_loc('type')] = 'LCR'
                 elif k==3:
-                    df_event.iloc[event_no-1, df_event.columns.get_loc('Type')] = 'LCL'
-                df_event.iloc[event_no-1, df_event.columns.get_loc('Duration(s)')] = stepSize/2
-                df_event.iloc[event_no-1, df_event.columns.get_loc('Start_Index')] = beg_idx
-                df_event.iloc[event_no-1, df_event.columns.get_loc('End_Index')] = end_idx
-                df_event.iloc[event_no-1, df_event.columns.get_loc('Start_Timestamp')] = beg_timestamp
-                df_event.iloc[event_no-1, df_event.columns.get_loc('End_Timestamp')] = end_timestamp
-                df_event.iloc[event_no-1, df_event.columns.get_loc('Start_Spd(km/h)')] = beg_spd*3.6
-                df_event.iloc[event_no-1, df_event.columns.get_loc('End_Spd(km/h)')] = end_spd*3.6
-                df_event.iloc[event_no-1, df_event.columns.get_loc('Acceleration(m/s2)')] = (end_spd-beg_spd)/(stepSize/2)
-                df_event.iloc[event_no-1, df_event.columns.get_loc('Start_Course')] = beg_crs
-                df_event.iloc[event_no-1, df_event.columns.get_loc('End_Course')] = end_crs
-                df_event.iloc[event_no-1, df_event.columns.get_loc('Probability')] = event_max_prob  
+                    df_event.iloc[event_no-1, df_event.columns.get_loc('type')] = 'LCL'
+                df_event.iloc[event_no-1, df_event.columns.get_loc('d')] = stepSize/2
+                df_event.iloc[event_no-1, df_event.columns.get_loc('s_idx')] = beg_idx
+                df_event.iloc[event_no-1, df_event.columns.get_loc('e_idx')] = end_idx
+                df_event.iloc[event_no-1, df_event.columns.get_loc('s_timestamp')] = beg_timestamp
+                df_event.iloc[event_no-1, df_event.columns.get_loc('e_timestamp')] = end_timestamp
+                df_event.iloc[event_no-1, df_event.columns.get_loc('s_spd')] = beg_spd
+                df_event.iloc[event_no-1, df_event.columns.get_loc('e_spd')] = end_spd
+                df_event.iloc[event_no-1, df_event.columns.get_loc('ave_acc')] = (end_spd-beg_spd)/(stepSize/2)/3.6/9.8
+                df_event.iloc[event_no-1, df_event.columns.get_loc('s_crs')] = beg_crs
+                df_event.iloc[event_no-1, df_event.columns.get_loc('e_crs')] = end_crs
+                df_event.iloc[event_no-1, df_event.columns.get_loc('prob')] = event_max_prob  
                 event_no += 1 
                                  
-    df_event = df_event[df_event['Probability'] > pro_threshold]               
-    df_event = df_event.sort_values(['Type', 'End_Timestamp', 'Probability'], ascending=[True, True, False])  
+    df_event = df_event[df_event['prob'] > pro_threshold]               
+    df_event = df_event.sort_values(['type', 'e_timestamp', 'prob'], ascending=[True, True, False])  
     df_event = df_event.reset_index(drop=True)   
        
     return df_event
 
 
-def Event_Summary(df_event):
+def event_summary(df_event):
     
     if df_event.empty==False:
         
         #Selecting process to remove overlaps with same event types
         eventLen = df_event.shape[0]
-        startRow = df_event['Start_Index'].iloc[0]
-        endRow = df_event['End_Index'].iloc[0]
-        type_idx = df_event['Type'].iloc[0]
-        df_event['Overlap_Index'] = 0
+        startRow = df_event['s_idx'].iloc[0]
+        endRow = df_event['e_idx'].iloc[0]
+        type_idx = df_event['type'].iloc[0]
+        df_event['overlap'] = 0
         overlap_idx = 1        
         for i in range(eventLen):
-            if df_event['Type'].iloc[i]!=type_idx: 
-                startRow = df_event['Start_Index'].iloc[i]
-                endRow = df_event['End_Index'].iloc[i]
-                type_idx = df_event['Type'].iloc[i]
+            if df_event['type'].iloc[i]!=type_idx: 
+                startRow = df_event['s_idx'].iloc[i]
+                endRow = df_event['e_idx'].iloc[i]
+                type_idx = df_event['type'].iloc[i]
                 overlap_idx += 1
-            if df_event['Start_Index'].iloc[i] > endRow: 
-                endRow = df_event['End_Index'].iloc[i]
+            if df_event['s_idx'].iloc[i] > endRow: 
+                endRow = df_event['e_idx'].iloc[i]
                 overlap_idx += 1
-                df_event.iloc[i, df_event.columns.get_loc('Overlap_Index')] = overlap_idx
+                df_event.iloc[i, df_event.columns.get_loc('overlap')] = overlap_idx
             else:
-                if (((endRow-df_event['Start_Index'].iloc[i])/(endRow-startRow)>=1/3) or\
-                    ((endRow-df_event['Start_Index'].iloc[i])/(df_event['End_Index'].iloc[i]-df_event['Start_Index'].iloc[i])>=1/3)):
-                    df_event.iloc[i, df_event.columns.get_loc('Overlap_Index')] = overlap_idx
+                if (((endRow-df_event['s_idx'].iloc[i])/(endRow-startRow)>=1/3) or\
+                    ((endRow-df_event['s_idx'].iloc[i])/(df_event['e_idx'].iloc[i]-df_event['s_idx'].iloc[i])>=1/3)):
+                    df_event.iloc[i, df_event.columns.get_loc('overlap')] = overlap_idx
                 else:
-                    endRow = df_event['End_Index'].iloc[i]
+                    endRow = df_event['e_idx'].iloc[i]
                     overlap_idx += 1
-                    df_event.iloc[i, df_event.columns.get_loc('Overlap_Index')] = overlap_idx                                                  
+                    df_event.iloc[i, df_event.columns.get_loc('overlap')] = overlap_idx                                                  
                 
-        df_event = df_event.loc[df_event.reset_index().groupby(['Overlap_Index'])['Probability'].idxmax()]
+        df_event = df_event.loc[df_event.reset_index().groupby(['overlap'])['prob'].idxmax()]
         df_event = df_event.reset_index(drop=True) 
-        df_event = df_event.drop('Overlap_Index', axis=1)
+        df_event = df_event.drop('overlap', axis=1)
         
-
         #Repeat selecting process to remove overlaps with different event types
-        df_event = df_event.sort_values(['End_Timestamp', 'Probability'], ascending=[True, False])  
+        df_event = df_event.sort_values(['e_timestamp', 'prob'], ascending=[True, False])  
         df_event = df_event.reset_index(drop=True)
         eventLen = df_event.shape[0]
-        startRow = df_event['Start_Index'].iloc[0]
-        endRow = df_event['End_Index'].iloc[0]
-        type_idx = df_event['Type'].iloc[0]
-        df_event['Overlap_Index'] = 0
+        startRow = df_event['s_idx'].iloc[0]
+        endRow = df_event['e_idx'].iloc[0]
+        type_idx = df_event['type'].iloc[0]
+        df_event['overlap'] = 0
         overlap_idx = 1
         for i in range(eventLen):
-            if df_event['Start_Index'].iloc[i] > endRow: 
-                endRow = df_event['End_Index'].iloc[i]
+            if df_event['s_idx'].iloc[i] > endRow: 
+                endRow = df_event['e_idx'].iloc[i]
                 overlap_idx += 1
-                df_event.iloc[i, df_event.columns.get_loc('Overlap_Index')] = overlap_idx
+                df_event.iloc[i, df_event.columns.get_loc('overlap')] = overlap_idx
             else:
-                if (((endRow-df_event['Start_Index'].iloc[i])/(endRow-startRow)>=1/3) or\
-                    ((endRow-df_event['Start_Index'].iloc[i])/(df_event['End_Index'].iloc[i]-df_event['Start_Index'].iloc[i])>=1/3)):
-                    df_event.iloc[i, df_event.columns.get_loc('Overlap_Index')] = overlap_idx
+                if (((endRow-df_event['s_idx'].iloc[i])/(endRow-startRow)>=1/3) or\
+                    ((endRow-df_event['s_idx'].iloc[i])/(df_event['e_idx'].iloc[i]-df_event['s_idx'].iloc[i])>=1/3)):
+                    df_event.iloc[i, df_event.columns.get_loc('overlap')] = overlap_idx
                 else:
-                    endRow = df_event['End_Index'].iloc[i]
+                    endRow = df_event['e_idx'].iloc[i]
                     overlap_idx += 1
-                    df_event.iloc[i, df_event.columns.get_loc('Overlap_Index')] = overlap_idx  
+                    df_event.iloc[i, df_event.columns.get_loc('overlap')] = overlap_idx  
               
-        df_event = df_event.loc[df_event.reset_index().groupby(['Overlap_Index'])['Probability'].idxmax()]
+        df_event = df_event.loc[df_event.reset_index().groupby(['overlap'])['prob'].idxmax()]
         df_event = df_event.reset_index(drop=True) 
-        df_event = df_event.drop('Overlap_Index', axis=1)
-        df_event['Start_Index'] = df_event['Start_Index'].astype(int)
-        df_event['End_Index'] = df_event['End_Index'].astype(int)
+        df_event = df_event.drop('overlap', axis=1)
+        df_event['s_idx'] = df_event['s_idx'].astype(int)
+        df_event['e_idx'] = df_event['e_idx'].astype(int)
         
-        df_event.to_csv('test.csv')
+        df_event['s_utc'] = pd.to_datetime(df_event['s_timestamp']/1000000000, unit='s')
+        df_event['e_utc'] = pd.to_datetime(df_event['e_timestamp']/1000000000, unit='s')
+        df_event = df_event.drop(['s_idx','e_idx','s_timestamp','e_timestamp'], axis=1)
+        df_event = df_event[['type','d','s_utc','e_utc','s_spd','e_spd','ave_acc','s_crs','e_crs','prob']]
             
     return df_event                
 
+
+def excess_acc_detection(acc_x, crs, spd, df_param, z_threshold):
+    """ detect the excess acceleration or deceleration 
+    
+    :param acc_x: longitudinal force of a vehicle
+    :param spd: speed of a vehicle in km/hr
+    :param z_threshold: threshold of z-score that acceleration breaches
+    :return: data frame to summarise the occasions of excess acceleration
+    """    
+    df_acc_sum = pd.DataFrame(np.nan, index=np.arange(10000), columns=['type','d','s_utc','e_utc',\
+                              's_spd','e_spd','ave_acc','s_crs','e_crs','max_acc','score','duplicate'])
+
+    acc_num = 0
+    max_acc = 0
+    max_dec = 0
+        
+    dataLen = len(acc_x)
+    for i in range(1,dataLen):
+        
+        if acc_x[i] > (df_param['acc_ave'][0]+z_threshold*np.sqrt(df_param['acc_var'][0])):
+            if (acc_x[i]>=max_acc) and (acc_x[i]>=acc_x[i-1]):
+                max_acc=acc_x[i]
+                max_utc=acc_x.index.values[i] 
+            elif (acc_x[i]<max_acc) and (acc_x[i]<acc_x[i-1]):
+                df_acc_sum.iloc[acc_num, df_acc_sum.columns.get_loc('type')] = 'EXA'
+                df_acc_sum.iloc[acc_num, df_acc_sum.columns.get_loc('e_utc')] = max_utc
+                df_acc_sum.iloc[acc_num, df_acc_sum.columns.get_loc('e_spd')] = spd[i-1]
+                df_acc_sum.iloc[acc_num, df_acc_sum.columns.get_loc('max_acc')] = max_acc
+                acc_num += 1
+                max_acc = 0
+
+        elif acc_x[i] < (df_param['dec_ave'][0]-z_threshold*np.sqrt(df_param['dec_var'][0])):
+            if (acc_x[i]<=max_dec) and (acc_x[i]<=acc_x[i-1]):
+                max_dec=acc_x[i]
+                max_utc=acc_x.index.values[i] 
+            elif (acc_x[i]>max_dec) and (acc_x[i]>acc_x[i-1]):
+                df_acc_sum.iloc[acc_num, df_acc_sum.columns.get_loc('type')] = 'EXD'
+                df_acc_sum.iloc[acc_num, df_acc_sum.columns.get_loc('e_utc')] = max_utc
+                df_acc_sum.iloc[acc_num, df_acc_sum.columns.get_loc('e_spd')] = spd[i-1]
+                df_acc_sum.iloc[acc_num, df_acc_sum.columns.get_loc('max_acc')] = max_dec
+                acc_num += 1
+                max_dec = 0
+    
+    df_acc_sum = df_acc_sum.dropna(how='all')
+    
+    #remove duplicate records
+    if df_acc_sum.empty==False:
+        
+        df_acc_sum['duplicate']=0
+        accLen=df_acc_sum.shape[0]
+        df_acc_sum.iloc[0,df_acc_sum.columns.get_loc('duplicate')]=1
+        overlap_indicator = 1
+        df_acc_sum['max_acc']=df_acc_sum['max_acc'].apply(lambda x: -1*x if x<0 else x)
+                
+        for i in range(1, accLen):
+            
+            if df_acc_sum['type'][i]==df_acc_sum['type'][i-1]:
+                if (df_acc_sum['e_utc'][i]-df_acc_sum['e_utc'][i-1])/np.timedelta64(1, 's')<=1:
+                    df_acc_sum.iloc[i,df_acc_sum.columns.get_loc('duplicate')]=overlap_indicator
+                else:
+                    overlap_indicator += 1
+                    df_acc_sum.iloc[i,df_acc_sum.columns.get_loc('duplicate')]=overlap_indicator
+            else:
+                overlap_indicator += 1
+                df_acc_sum.iloc[i,df_acc_sum.columns.get_loc('duplicate')]=overlap_indicator
+        
+        df_acc_sum = df_acc_sum.loc[df_acc_sum.groupby('duplicate')['max_acc'].idxmax()]
+        
+        df_acc_sum = df_acc_sum.reset_index(drop=True)
+        accLen = df_acc_sum.shape[0]
+        for i in range(accLen):
+            if df_acc_sum['type'][i]=='EXD':
+                temp_max_dec = df_acc_sum['max_acc'][i]
+                df_acc_sum.iloc[i,df_acc_sum.columns.get_loc('max_acc')]=-1*temp_max_dec
+        
+        df_acc_sum = df_acc_sum.drop('duplicate',axis=1)
+        
+        #expand maximum acc at a point to a period
+        accLen = df_acc_sum.shape[0]
+        for i in range(accLen):
+            idx = acc_x.index.searchsorted(df_acc_sum['e_utc'][i])            
+            if (idx>499) and ((idx+500)<len(acc_x)):
+                s_utc = acc_x.index.values[idx-500]
+                s_spd = spd[idx-500]
+                s_crs = crs[idx-500]
+                e_utc = acc_x.index.values[idx+500]
+                e_spd = spd[idx+500]
+                e_crs = crs[idx+500]
+                for j in range (idx, (idx-500), -1):
+                    if (acc_x[j]<0.01) and (acc_x[j]>-0.01):
+                        s_utc = acc_x.index.values[j]
+                        s_spd = spd[j]
+                        s_crs = crs[j]
+                        break
+                for j in range (idx, (idx+500), 1):
+                    if (acc_x[j]<0.01) and (acc_x[j]>-0.01):
+                        e_utc = acc_x.index.values[j]
+                        e_spd = spd[j]
+                        e_crs = crs[j]
+                        break
+
+                df_acc_sum.iloc[i,df_acc_sum.columns.get_loc('s_utc')]=s_utc
+                df_acc_sum.iloc[i,df_acc_sum.columns.get_loc('s_spd')]=s_spd
+                df_acc_sum.iloc[i,df_acc_sum.columns.get_loc('s_crs')]=s_crs
+                df_acc_sum.iloc[i,df_acc_sum.columns.get_loc('e_utc')]=e_utc
+                df_acc_sum.iloc[i,df_acc_sum.columns.get_loc('e_spd')]=e_spd
+                df_acc_sum.iloc[i,df_acc_sum.columns.get_loc('e_crs')]=e_crs        
+                duration = (e_utc-s_utc)/np.timedelta64(1, 's')
+                df_acc_sum.iloc[i,df_acc_sum.columns.get_loc('d')]=duration
+                df_acc_sum.iloc[i,df_acc_sum.columns.get_loc('ave_acc')]= (e_spd-s_spd)/duration/3.6/9.8
+        
+    return df_acc_sum
 
 
 

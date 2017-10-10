@@ -24,3 +24,4 @@ imu_columns_conversion = {
     'magnetic_field_y(microteslas)': 'm_y',
     'magnetic_field_z(microteslas)': 'm_z',
 }
+
