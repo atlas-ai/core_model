@@ -50,6 +50,7 @@ def convert_frame(imu, gps):
                             imu['g_x'], imu['g_y'], imu['g_z'],\
                             imu['m_x'], imu['m_y'], imu['m_z'],\
                             gps['course'], gps['speed'])    
+    df_fc = df_fc[~df_fc.isin(['NaN']).any(axis=1)]
     return df_fc
 
 
@@ -62,6 +63,7 @@ def apply_filter(df_fc, n_smooth):
     :return: series of processed accelerations, rotation rates, course and speed
     """
     df_smooth = df_fc.rolling(n_smooth).mean()
+    df_smooth = df_smooth[~df_smooth.isin(['NaN']).any(axis=1)]
     acc_x, acc_y, rot_z, crs, spd = rdp.read_df(df_smooth)
     return acc_x, acc_y, rot_z, crs, spd
 
@@ -129,7 +131,7 @@ def evaluation_summary(user_id, df_evt_eva, df_acc_eva):
 ####       Main Module      ###
 ###############################    
 
-def main_work_flow():
+def main_work_flow(file_num):
     """ main module to detect, evaluate and summarise driving behaviour 
         for a single file 
     
@@ -137,40 +139,76 @@ def main_work_flow():
     """
     start = timeit.default_timer()
     
-    folder = "/Users/Sean_Xin_Zhou/Documents/GitHub/data/Test Data/02 Data Checked/"
-    pattern = folder + '*_Checked.xlsx'
+    folder = "/Users/Sean_Xin_Zhou/Documents/GitHub/data/Test Data/20171025/"
+    pattern = folder + '*_Cleaned.xlsx'
     files = glob.glob(pattern)
 
-    filename = files[1]  
+    filename = files[file_num]  
     basename = os.path.splitext(os.path.basename(filename))[0]
-    base_id = basename.replace("_Checked","")
+    base_id = basename.replace("_Cleaned","")
     gps_sheet = "GPS"
     imu_sheet = "IMU"
     
     imu, gps = clean_data(filename, imu_sheet, gps_sheet)
     df_fc = convert_frame(imu, gps)
-    acc_x, acc_y, rot_z, crs, spd = apply_filter(df_fc, n_smooth=100)
+    acc_x, acc_y, rot_z, crs, spd = apply_filter(df_fc, n_smooth=20)
     df_evt = event_detection_model(rot_z, crs, spd)
     df_acc = acc_detection_model(acc_x, crs, spd, z_threshold=6)
     df_evt_eva = evt_evaluation_model(acc_x, acc_y, spd, df_evt)
     df_acc_eva = acc_evaluation_model(df_acc, z_threshold=6)
     df_sum = evaluation_summary(base_id, df_evt_eva, df_acc_eva)
     
+    df_sum.to_csv(base_id+"_sum.csv",index=False)
+    
     stop = timeit.default_timer()
-    print ("Done for user: %s" % base_id)    
+    print ("Done for user: %s" % base_id)
     print ("Run Time: %s seconds \n" % round((stop - start),2))
     
     return df_sum
 
 
+'18561c11-dd73-4ec9-9ca0-42b13c28048f'#Android
+'a9b66127-08fe-4f4e-b054-0171f3ffda16'
+'afa9a586-5e7e-45c6-a65a-7a17d90b4d5f'#iOS
+'c55ecebb-70f5-4ca6-9ed5-c4e2f4e637a5'
 
+def read_new_data(filename, track_id):
+    
+    df = pd.read_csv(filename)
+    df = df[df['track_uuid']==track_id]
 
+    imu = df[['t','att_pitch','att_roll','att_yaw','rot_rate_x','rot_rate_y','rot_rate_z','g_x','g_y','g_z',\
+                'user_a_x','user_a_y','user_a_z','m_x','m_y','m_z']]
+     
+    imu.index = pd.to_datetime(imu['t'], unit='s')
+    imu = imu[~imu.index.duplicated()]
+    imu.drop('t',axis=1)
+    
+    gps = df[['t','lat','long','alt','speed','course']]
+    gps['course'] = gps['course'].replace({-1.: np.nan})
+    gps['course'] = np.radians(gps['course'])
+    gps['speed'] = gps['speed'].replace({-1.: np.nan})
+    gps.index = pd.to_datetime(gps['t'], unit='s')
+    gps = gps[~gps.index.duplicated()]  # drop duplicated index
+    gps.drop('t', axis=1)
 
-
-
-
-
-
-
-
-
+    return imu, gps
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
