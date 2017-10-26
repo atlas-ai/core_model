@@ -6,6 +6,8 @@ from multiprocessing import Queue
 from pipeline_processor.utils import connect_db
 from pipeline_processor.worker import Worker
 
+from settings import NUM_WORKERS
+
 if __name__ == '__main__':
     # Initialize queue and workers
     queue = Queue()
