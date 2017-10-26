@@ -14,9 +14,9 @@ import distributions
 def event_detection(rot_z, crs, spd, param):
     
     dataLen = rot_z.shape[0]
-    dataPoints = 50
-    scanStep = 10    
-    rotz_threshold = 0.02
+    dataPoints = 20
+    scanStep = 2    
+    rotz_threshold = 0.03
     
     #Create empty data frame to store event data (RTT, LTT, LCR, LCL)
     df_event = pd.DataFrame(np.nan, index=np.arange(1000), columns=['type','d','s_idx','e_idx','s_timestamp','e_timestamp',\
@@ -31,13 +31,13 @@ def event_detection(rot_z, crs, spd, param):
         
         #Initialise scan parameters and probability threshold
         if k==0 or k==1:
-            beg_window = 10
-            end_window = 30
+            beg_window = 5
+            end_window = 15
             num_of_window = 11
             pro_threshold = 0.9            
         elif k==2 or k==3:
-            beg_window = 4
-            end_window = 16
+            beg_window = 2
+            end_window = 8
             num_of_window = 7
             pro_threshold = 0.7
         
@@ -72,12 +72,12 @@ def event_detection(rot_z, crs, spd, param):
                 
                     idx = (i+(j-1)*stepSize).astype(int)                
                     dataVar[j] = rot_z.iloc[idx]
-                    dataVar[j+dataPoints] = crs.iloc[idx]
+                    dataVar[j+dataPoints] = crs.iloc[idx]-crs.iloc[idx-1]
                     dataVar[j+2*dataPoints] = rot_z.index.values[idx]
             
                 #Rotation w.r.t. z-axis must be close to zero to indicate the beginning and end of a event
                 rotz_beg = dataVar[1]
-                rotz_end = dataVar[50] 
+                rotz_end = dataVar[20] 
             
                 #Calculate probability for data segment
                 event_prob = distributions.predict_prob_sigmoid(dataVar[0:2 * dataPoints + 1], param[k])
@@ -106,12 +106,12 @@ def event_detection(rot_z, crs, spd, param):
                         elif k==2:
                             df_event.iloc[event_no-1, df_event.columns.get_loc('type')] = 'LCR'
                         elif k==3:
-                            df_event.iloc[event_no-1, df_event.columns.get_loc('type')] = 'LCL'
-                        df_event.iloc[event_no-1, df_event.columns.get_loc('d')] = stepSize/2
+                            df_event.iloc[event_no-1, df_event.columns.get_loc('type')] = 'LCL'               
                         df_event.iloc[event_no-1, df_event.columns.get_loc('s_idx')] = beg_idx
                         df_event.iloc[event_no-1, df_event.columns.get_loc('e_idx')] = end_idx
                         df_event.iloc[event_no-1, df_event.columns.get_loc('s_timestamp')] = beg_timestamp
                         df_event.iloc[event_no-1, df_event.columns.get_loc('e_timestamp')] = end_timestamp
+                        df_event.iloc[event_no-1, df_event.columns.get_loc('d')] = stepSize
                         df_event.iloc[event_no-1, df_event.columns.get_loc('s_spd')] = beg_spd
                         df_event.iloc[event_no-1, df_event.columns.get_loc('e_spd')] = end_spd
                         df_event.iloc[event_no-1, df_event.columns.get_loc('ave_acc')] = (end_spd-beg_spd)/(stepSize/2)/3.6/9.8
@@ -142,11 +142,11 @@ def event_detection(rot_z, crs, spd, param):
                     df_event.iloc[event_no-1, df_event.columns.get_loc('type')] = 'LCR'
                 elif k==3:
                     df_event.iloc[event_no-1, df_event.columns.get_loc('type')] = 'LCL'
-                df_event.iloc[event_no-1, df_event.columns.get_loc('d')] = stepSize/2
                 df_event.iloc[event_no-1, df_event.columns.get_loc('s_idx')] = beg_idx
                 df_event.iloc[event_no-1, df_event.columns.get_loc('e_idx')] = end_idx
                 df_event.iloc[event_no-1, df_event.columns.get_loc('s_timestamp')] = beg_timestamp
                 df_event.iloc[event_no-1, df_event.columns.get_loc('e_timestamp')] = end_timestamp
+                df_event.iloc[event_no-1, df_event.columns.get_loc('d')] = stepSize
                 df_event.iloc[event_no-1, df_event.columns.get_loc('s_spd')] = beg_spd
                 df_event.iloc[event_no-1, df_event.columns.get_loc('e_spd')] = end_spd
                 df_event.iloc[event_no-1, df_event.columns.get_loc('ave_acc')] = (end_spd-beg_spd)/(stepSize/2)/3.6/9.8
@@ -156,7 +156,7 @@ def event_detection(rot_z, crs, spd, param):
                 event_no += 1 
                                  
     df_event = df_event[df_event['prob'] > pro_threshold]               
-    df_event = df_event.sort_values(['type', 'e_timestamp', 'prob'], ascending=[True, True, False])  
+    df_event = df_event.sort_values(['type', 'e_idx', 'prob'], ascending=[True, True, False])  
     df_event = df_event.reset_index(drop=True)   
        
     return df_event
@@ -313,20 +313,20 @@ def excess_acc_detection(acc_x, crs, spd, df_param, z_threshold):
         accLen = df_acc_sum.shape[0]
         for i in range(accLen):
             idx = acc_x.index.searchsorted(df_acc_sum['e_utc'][i])            
-            if (idx>499) and ((idx+500)<len(acc_x)):
-                s_utc = acc_x.index.values[idx-500]
-                s_spd = spd[idx-500]
-                s_crs = crs[idx-500]
-                e_utc = acc_x.index.values[idx+500]
-                e_spd = spd[idx+500]
-                e_crs = crs[idx+500]
-                for j in range (idx, (idx-500), -1):
+            if (idx>49) and ((idx+50)<len(acc_x)):
+                s_utc = acc_x.index.values[idx-50]
+                s_spd = spd[idx-50]
+                s_crs = crs[idx-50]
+                e_utc = acc_x.index.values[idx+50]
+                e_spd = spd[idx+50]
+                e_crs = crs[idx+50]
+                for j in range (idx, (idx-50), -1):
                     if (acc_x[j]<0.01) and (acc_x[j]>-0.01):
                         s_utc = acc_x.index.values[j]
                         s_spd = spd[j]
                         s_crs = crs[j]
                         break
-                for j in range (idx, (idx+500), 1):
+                for j in range (idx, (idx+50), 1):
                     if (acc_x[j]<0.01) and (acc_x[j]>-0.01):
                         e_utc = acc_x.index.values[j]
                         e_spd = spd[j]

@@ -30,29 +30,29 @@ def get_event_zscore(evt_type, s_utc, e_utc, acc_x, acc_y, spd):
         evt_id = 'rtt'
         coef = rdp.read_eva_param('rtt_evaluation_parameters.csv')
         dt_num = 3
-        sec_idx = [0,14,39,49]
+        sec_idx = [0,5,15,19]
     
     elif evt_type=='LTT':
         evt_id = 'ltt'
         coef = rdp.read_eva_param('ltt_evaluation_parameters.csv')
         dt_num = 3
-        sec_idx = [0,14,39,49]
+        sec_idx = [0,5,15,19]
         
     elif evt_type=='LCR':
         evt_id = 'lcr'
         coef = rdp.read_eva_param('lcr_evaluation_parameters.csv')
         dt_num = 2
-        sec_idx = [0,24,49]
+        sec_idx = [0,9,19]
         
     elif evt_type=='LCL':
         evt_id = 'lcl'
         coef = rdp.read_eva_param('lcl_evaluation_parameters.csv')
         dt_num = 2
-        sec_idx = [0,24,49]
+        sec_idx = [0,9,19]
         
     s_idx = acc_x.index.searchsorted(s_utc)
     e_idx = acc_x.index.searchsorted(e_utc)
-    stepSize = (round((e_idx-s_idx+1)/50,0)).astype(int)
+    stepSize = (round((e_idx-s_idx+1)/20,0)).astype(int)
     
     spd_bin = np.zeros(dt_num)
     acc_z = np.zeros(dt_num)
@@ -198,10 +198,10 @@ def acc_eva(df_acc, z_threshold):
     for i in range(acc_num):
         if df_acc['max_acc'][i]>0:
             acc_score = dst.z_score(df_acc['max_acc'][i],param['acc_ave'][0],np.sqrt(param['acc_var'][0]))
-            df_acc_eva.iloc[i, df_acc_eva.columns.get_loc('score')] = (acc_score-z_threshold)*alert_score
+            df_acc_eva.iloc[i, df_acc_eva.columns.get_loc('score')] = round((acc_score-z_threshold)*alert_score,0)
         elif df_acc['max_acc'][i]<0:
             acc_score = dst.z_score(df_acc['max_acc'][i],param['dec_ave'][0],np.sqrt(param['dec_var'][0]))            
-            df_acc_eva.iloc[i, df_acc_eva.columns.get_loc('score')] = -1*(acc_score+z_threshold)*alert_score
+            df_acc_eva.iloc[i, df_acc_eva.columns.get_loc('score')] = round(-1*(acc_score+z_threshold)*alert_score,0)
     
     return df_acc_eva
 
@@ -252,6 +252,7 @@ def eva_sum(user_id, df_evt_eva, df_acc_eva):
         df_summary.iloc[rec_num, df_summary.columns.get_loc('score')] = df_acc_eva['score'][i]    
         rec_num += 1
 
+    df_summary.drop_duplicates()
     df_summary = df_summary.sort_values('s_utc', ascending=True) 
     df_summary = df_summary.reset_index(drop=True)    
     
