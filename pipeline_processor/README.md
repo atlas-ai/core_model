@@ -1,3 +1,7 @@
+# Deployment
+
+Master branch deployed to the dev server using codeship. Configuration (.env) and systemd unit file in devops/ansible/roles/pipeline_processor. If you need to change the configuration, clone the devops repo, change what you need, and run ```ansible-playbook -i inventory pipeline-processor.yml```.
+
 # Expected JSON format for the measurement data
 
 ```
