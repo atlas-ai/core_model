@@ -1,30 +1,12 @@
-import os
 import select
 import psycopg2
 import psycopg2.extensions
 
 from multiprocessing import Queue
-from urllib.parse import urlparse
+from pipeline_processor.utils import connect_db
 from pipeline_processor.worker import Worker
 
 NUM_WORKERS = 3
-
-
-def connect_db():
-    result = urlparse(os.environ.get('DB_CONNECTION_STRING'))
-    username = result.username
-    password = result.password
-    database = result.path[1:]
-    hostname = result.hostname
-    port = result.port
-
-    connection = psycopg2.connect(
-        database=database,
-        user=username,
-        password=password,
-        host=hostname,
-        port=port)
-    return connection
 
 
 if __name__ == '__main__':

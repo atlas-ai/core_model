@@ -1,21 +1,21 @@
 CREATE OR REPLACE FUNCTION table_insert_notify() RETURNS trigger AS $$
 DECLARE
-    insert_row_timestamp bigint;
+    insert_row_timestamp float;
     insert_row_track_uuid text;
-    oldest_unprocessed_timestamp bigint;
+    oldest_unprocessed_timestamp float;
     notification json;
 BEGIN
     insert_row_timestamp = NEW.data->>'t';
     insert_row_track_uuid = NEW.data->>'track_uuid';
 
     -- Select the oldest unprocessed row timestamp and check if more than 45 seconds have passed (45000 millis)
-    SELECT MIN((data->>'t')::bigint)
+    SELECT MIN((data->>'t')::float)
     INTO oldest_unprocessed_timestamp
     FROM measurement
     WHERE NOT processed
         AND (data->>'track_uuid') = insert_row_track_uuid;
 
-    IF (insert_row_timestamp - oldest_unprocessed_timestamp >= 45000)
+    IF (insert_row_timestamp - oldest_unprocessed_timestamp >= 45)
     THEN
         -- Send notification in case there is enough unprocessed data
         notification = json_build_object('table', TG_TABLE_NAME,

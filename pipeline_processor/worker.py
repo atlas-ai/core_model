@@ -1,11 +1,12 @@
-import os
 import json
 import pandas as pd
 import cleaning as fin
+import settings
 
 from work_flow import convert_frame
 from multiprocessing import Process
 from sqlalchemy import create_engine
+from pipeline_processor.utils import connect_db
 from work_flow import apply_filter, event_detection_model, acc_detection_model, evt_evaluation_model, \
     acc_evaluation_model, evaluation_summary
 
@@ -14,7 +15,7 @@ class Worker(Process):
     def __init__(self, queue):
         super(Worker, self).__init__()
         self.queue = queue
-        self.engine = create_engine(os.environ.get('DB_CONNECTION_STRING'))
+        self.engine = create_engine(settings.DB_CONNECTION_STRING)
 
     def run(self):
         print('Worker started')
@@ -29,8 +30,8 @@ class Worker(Process):
             query = """
                         SELECT *
                         FROM measurement
-                        WHERE (data->>'t')::bigint >= ('{timestamp_from}'::bigint - 15000)
-                            AND (data->>'t')::bigint <= '{timestamp_to}'
+                        WHERE (data->>'t')::float >= ('{timestamp_from}'::float - 15)
+                            AND (data->>'t')::float <= '{timestamp_to}'
                             AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
                     """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
                                timestamp_to=data['payload']['data']['t'],
@@ -40,7 +41,6 @@ class Worker(Process):
 
             # Emulating Main.write_acc()
             df_data = df['data'].apply(lambda x: pd.Series(x))
-            df_data['t'] = df_data['t'].apply(lambda x: x/1000)
 
             gps_data = df_data[['t', 'lat', 'long', 'alt', 'course', 'speed']]
             imu_data = df_data[['t', 'att_pitch', 'att_roll', 'att_yaw', 'rot_rate_x', 'rot_rate_y', 'rot_rate_z',
@@ -61,4 +61,33 @@ class Worker(Process):
             print(df_sum.head())
 
             if not df_sum.empty:
-                df_sum.to_sql(name='detected_events', con=self.engine, if_exists='append')
+                # Check if data has been processed already
+                query = """
+                        SELECT processed
+                        FROM measurement
+                        WHERE (data->>'t')::float = '{timestamp_from}'::float
+                            AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
+                        LIMIT 1
+                    """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
+                               track_uuid=data['payload']['data']['track_uuid'])
+                df_processed = pd.read_sql_query(query, con=self.engine)
+
+                if not df_processed.ix[0]['processed']:
+                    # Store results
+                    df_sum.to_sql(name='detected_events', con=self.engine, if_exists='append')
+
+                    # Update measurements data and set it as processed
+                    query = """
+                            UPDATE measurement
+                            SET processed = TRUE
+                            WHERE (data->>'t')::float >= '{timestamp_from}'::float
+                                AND (data->>'t')::float <= '{timestamp_to}'
+                                AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
+                    """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
+                               timestamp_to=data['payload']['data']['t'],
+                               track_uuid=data['payload']['data']['track_uuid'])
+
+                    con = connect_db()
+                    cursor = con.cursor()
+                    cursor.execute(query)
+                    con.commit()
