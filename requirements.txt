@@ -22,7 +22,8 @@ mistune==0.7.2
 nbconvert==4.2.0
 nbformat==4.0.1
 notebook==4.2.1
-numpy==1.11.0
+numpy
+numba
 pandas==0.20.3
 pandocfilters==1.4.1
 pexpect==4.1.0
@@ -41,6 +42,7 @@ pyzmq==15.2.0
 qtconsole==4.2.1
 requests==2.10.0
 simplegeneric==0.8.1
+sqlalchemy
 six==1.10.0
 terminado==0.6
 tornado==4.3

@@ -1,7 +1,7 @@
-from os.path import join, dirname
+import os
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
 
 DB_CONNECTION_STRING = os.environ.get("DB_CONNECTION_STRING")
-NUM_WORKERS = os.environ.get("NUM_WORKERS")
+NUM_WORKERS = int(os.environ.get("NUM_WORKERS"))
