@@ -50,7 +50,7 @@ class Worker(Process):
             imu = fin.imu_data(imu_data)
 
             df_fc = convert_frame(imu, gps)
-            acc_x, acc_y, rot_z, crs, spd = apply_filter(df_fc, n_smooth=100)
+            acc_x, acc_y, rot_z, crs, spd = apply_filter(df_fc, n_smooth=20)
             df_evt = event_detection_model(rot_z, crs, spd)
             df_acc = acc_detection_model(acc_x, crs, spd, z_threshold=6)
             df_evt_eva = evt_evaluation_model(acc_x, acc_y, spd, df_evt)
