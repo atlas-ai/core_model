@@ -1,21 +1,20 @@
 import json
 import pandas as pd
 import cleaning as fin
-import settings
 
+from sqlalchemy import Float
 from work_flow import convert_frame
 from multiprocessing import Process
-from sqlalchemy import create_engine
-from pipeline_processor.utils import connect_db
+from pipeline_processor.models import Measurement
 from work_flow import apply_filter, event_detection_model, acc_detection_model, evt_evaluation_model, \
     acc_evaluation_model, evaluation_summary
 
 
 class Worker(Process):
-    def __init__(self, queue):
+    def __init__(self, queue, session):
         super(Worker, self).__init__()
         self.queue = queue
-        self.engine = create_engine(settings.DB_CONNECTION_STRING)
+        self.session = session
 
     def run(self):
         print('Worker started')
@@ -26,18 +25,18 @@ class Worker(Process):
             print('\n\n', data['payload']['data']['track_uuid'])
             print(data['payload']['data']['t'])
 
-            # Query needed measurements data (add 15 seconds (15000 millis) more for overlap data)
-            query = """
-                        SELECT *
-                        FROM measurement
-                        WHERE (data->>'t')::float >= ('{timestamp_from}'::float - 15)
-                            AND (data->>'t')::float <= '{timestamp_to}'
-                            AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
-                    """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
-                               timestamp_to=data['payload']['data']['t'],
-                               track_uuid=data['payload']['data']['track_uuid'])
+            timestamp_from = float(data['oldest_unprocessed_timestamp'])
+            timestamp_to = float(data['payload']['data']['t'])
+            track_uuid = data['payload']['data']['track_uuid']
 
-            df = pd.read_sql_query(query, con=self.engine)
+            # Query needed measurements data (add 15 seconds (15000 millis) more for overlap data)
+            measurements = self.session.query(Measurement)\
+                .filter(Measurement.data['t'].astext.cast(Float) >= (timestamp_from - 15))\
+                .filter(Measurement.data['t'].astext.cast(Float) <= timestamp_to)\
+                .filter(Measurement.data['track_uuid'].astext == track_uuid)
+
+            df = pd.read_sql(measurements.order_by(Measurement.data['t']).statement,
+                             measurements.session.bind)
 
             # Emulating Main.write_acc()
             df_data = df['data'].apply(lambda x: pd.Series(x))
@@ -62,32 +61,14 @@ class Worker(Process):
 
             if not df_sum.empty:
                 # Check if data has been processed already
-                query = """
-                        SELECT processed
-                        FROM measurement
-                        WHERE (data->>'t')::float = '{timestamp_from}'::float
-                            AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
-                        LIMIT 1
-                    """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
-                               track_uuid=data['payload']['data']['track_uuid'])
-                df_processed = pd.read_sql_query(query, con=self.engine)
+                already_processed = self.session.query(Measurement)\
+                    .filter(Measurement.data['t'].astext.cast(Float) == timestamp_from)\
+                    .filter(Measurement.data['track_uuid'].astext == track_uuid).first()
 
-                if not df_processed.ix[0]['processed']:
+                if not already_processed:
                     # Store results
-                    df_sum.to_sql(name='detected_events', con=self.engine, if_exists='append')
+                    df_sum.to_sql(name='detected_events', con=self.session.get_bind(), if_exists='append')
 
                     # Update measurements data and set it as processed
-                    query = """
-                            UPDATE measurement
-                            SET processed = TRUE
-                            WHERE (data->>'t')::float >= '{timestamp_from}'::float
-                                AND (data->>'t')::float <= '{timestamp_to}'
-                                AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
-                    """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
-                               timestamp_to=data['payload']['data']['t'],
-                               track_uuid=data['payload']['data']['track_uuid'])
-
-                    con = connect_db()
-                    cursor = con.cursor()
-                    cursor.execute(query)
-                    con.commit()
+                    measurements.update({Measurement.processed: True}, synchronize_session='fetch')
+                    self.session.commit()
