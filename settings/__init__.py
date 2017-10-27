@@ -1,2 +1,7 @@
+import os
+from dotenv import load_dotenv, find_dotenv
 
-DB_CONNECTION_STRING = 'postgres://atlas:aslkjdOIUJIHFEDHhucdsjhcqhuHIUWHDF2374298@localhost:6543/atlas'
+load_dotenv(find_dotenv())
+
+DB_CONNECTION_STRING = os.environ.get("DB_CONNECTION_STRING")
+NUM_WORKERS = int(os.environ.get("NUM_WORKERS"))
