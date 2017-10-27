@@ -26,6 +26,7 @@ def gps_data(df):
 
     df.index = pd.to_datetime(df['t'], unit='s')
     df = df[~df.index.duplicated()]  # drop duplicated index
+    df.drop('t', axis=1)
     return df
 
 
@@ -38,4 +39,5 @@ def imu_data(df):
     df = df.rename(columns=imu_columns_conversion)
     df.index = pd.to_datetime(df['t'], unit='s')
     df = df[~df.index.duplicated()]  # drop duplicated index
+    df.drop('t', axis=1)
     return df
