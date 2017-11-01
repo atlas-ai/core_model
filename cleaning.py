@@ -18,12 +18,17 @@ def gps_data(df):
     :param df: raw data dataframe
     :return: cleaned dataframe
     """
-    new_col = pd.Series(df.columns).map(gps_columns_conversion)
-    df.columns = new_col
-    df['course'] = df['course'].replace({-1.: np.nan})
+    df = df.rename(columns=gps_columns_conversion)
+
+    df['course'] = df['course'].replace(-1., np.nan)
     df['course'] = np.radians(df['course'])
+<<<<<<< HEAD
     df['speed'] = df['speed'].replace({-1.: np.nan})
     #df.set_index('t', inplace=True)
+=======
+    df['speed'] = df['speed'].replace(-1., np.nan)
+
+>>>>>>> 08ef89c3d45ffdd687906f117fca76bfd00a1a1e
     df.index = pd.to_datetime(df['t'], unit='s')
     df = df[~df.index.duplicated()]  # drop duplicated index
     df.drop('t', axis=1)
@@ -36,9 +41,13 @@ def imu_data(df):
     :param df: raw data dataframe
     :return: cleaned dataframe
     """
+<<<<<<< HEAD
     new_col = pd.Series(df.columns).map(imu_columns_conversion)
     df.columns = new_col
     #df.set_index('t', inplace=True)
+=======
+    df = df.rename(columns=imu_columns_conversion)
+>>>>>>> 08ef89c3d45ffdd687906f117fca76bfd00a1a1e
     df.index = pd.to_datetime(df['t'], unit='s')
     df = df[~df.index.duplicated()]  # drop duplicated index
     df.drop('t', axis=1)
