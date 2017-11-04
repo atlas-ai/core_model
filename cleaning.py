@@ -23,7 +23,7 @@ def gps_data(df):
     df['course'] = df['course'].replace(-1., np.nan)
     df['course'] = np.radians(df['course'])
     df['speed'] = df['speed'].replace(-1., np.nan)
-
+    
     df.index = pd.to_datetime(df['t'], unit='s')
     df = df[~df.index.duplicated()]  # drop duplicated index
     df.drop('t', axis=1)
