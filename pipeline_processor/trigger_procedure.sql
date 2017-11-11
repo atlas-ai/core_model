@@ -12,17 +12,26 @@ BEGIN
     SELECT MIN((data->>'t')::numeric)
     INTO oldest_unprocessed_timestamp
     FROM measurement
-    WHERE NOT processed
+    WHERE status = 'unprocessed'
         AND (data->>'track_uuid') = insert_row_track_uuid;
 
+    -- Send notification in case there is enough unprocessed data
     IF (insert_row_timestamp - oldest_unprocessed_timestamp >= 45)
     THEN
-        -- Send notification in case there is enough unprocessed data
         notification = json_build_object('table', TG_TABLE_NAME,
                                          'action', TG_OP,
                                          'oldest_unprocessed_timestamp', oldest_unprocessed_timestamp,
                                          'payload', row_to_json(NEW));
 
+        -- Update the measurements that are going to be processed
+        UPDATE measurement
+        SET status = 'processing'
+        WHERE status = 'unprocessed'
+            AND (data->>'t')::numeric >= oldest_unprocessed_timestamp
+            AND (data->>'t')::numeric <= insert_row_timestamp
+            AND (data->>'track_uuid') = insert_row_track_uuid;
+
+        -- Send notification to channel
         PERFORM pg_notify('new_measurements', notification::text);
     END IF;
 
