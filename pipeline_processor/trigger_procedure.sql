@@ -1,15 +1,15 @@
 CREATE OR REPLACE FUNCTION table_insert_notify() RETURNS trigger AS $$
 DECLARE
-    insert_row_timestamp float;
+    insert_row_timestamp numeric;
     insert_row_track_uuid text;
-    oldest_unprocessed_timestamp float;
+    oldest_unprocessed_timestamp numeric;
     notification json;
 BEGIN
     insert_row_timestamp = NEW.data->>'t';
     insert_row_track_uuid = NEW.data->>'track_uuid';
 
     -- Select the oldest unprocessed row timestamp and check if more than 45 seconds have passed (45000 millis)
-    SELECT MIN((data->>'t')::float)
+    SELECT MIN((data->>'t')::numeric)
     INTO oldest_unprocessed_timestamp
     FROM measurement
     WHERE NOT processed

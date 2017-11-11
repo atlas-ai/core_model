@@ -25,13 +25,14 @@ class Worker(Process):
 
             print('\n\n', data['payload']['data']['track_uuid'])
             print(data['payload']['data']['t'])
+            print('oldest unprocessed timestamp:', data['oldest_unprocessed_timestamp'], '\n\n')
 
             # Query needed measurements data (add 15 seconds (15000 millis) more for overlap data)
             query = """
                         SELECT *
                         FROM measurement
-                        WHERE (data->>'t')::float >= ('{timestamp_from}'::float - 15)
-                            AND (data->>'t')::float <= '{timestamp_to}'
+                        WHERE (data->>'t')::numeric >= ('{timestamp_from}'::numeric - 15)
+                            AND (data->>'t')::numeric <= '{timestamp_to}'
                             AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
                     """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
                                timestamp_to=data['payload']['data']['t'],
@@ -57,22 +58,20 @@ class Worker(Process):
             df_acc_eva = acc_evaluation_model(df_acc, z_threshold=6)
             df_sum = evaluation_summary(data['payload']['data']['track_uuid'], df_evt_eva, df_acc_eva)
 
-            print(df_sum.columns)
-            print(df_sum.head())
-
             if not df_sum.empty:
                 # Check if data has been processed already
                 query = """
                         SELECT processed
                         FROM measurement
-                        WHERE (data->>'t')::float = '{timestamp_from}'::float
+                        WHERE (data->>'t')::numeric = '{timestamp_from}'::numeric
                             AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
                         LIMIT 1
                     """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
                                track_uuid=data['payload']['data']['track_uuid'])
                 df_processed = pd.read_sql_query(query, con=self.engine)
 
-                if not df_processed.ix[0]['processed']:
+                # If data hasn't been processed yet, then store the results and set the measurements processed=TRUE
+                if df_processed.empty or not df_processed.ix[0]['processed']:
                     # Store results
                     df_sum.to_sql(name='detected_events', con=self.engine, if_exists='append')
 
@@ -80,12 +79,17 @@ class Worker(Process):
                     query = """
                             UPDATE measurement
                             SET processed = TRUE
-                            WHERE (data->>'t')::float >= '{timestamp_from}'::float
-                                AND (data->>'t')::float <= '{timestamp_to}'
+                            WHERE (data->>'t')::numeric >= '{timestamp_from}'::numeric
+                                AND (data->>'t')::numeric <= '{timestamp_to}'
                                 AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
                     """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
                                timestamp_to=data['payload']['data']['t'],
                                track_uuid=data['payload']['data']['track_uuid'])
+
+                    print("SET measurement processed TRACK_UUID {track_uuid} "
+                          "FROM {timestamp_from} TO {timestamp_to}".format(track_uuid=data['payload']['data']['track_uuid'],
+                                                                           timestamp_from=data['oldest_unprocessed_timestamp'],
+                                                                           timestamp_to=data['payload']['data']['t']))
 
                     con = connect_db()
                     cursor = con.cursor()
