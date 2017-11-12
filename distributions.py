@@ -39,6 +39,7 @@ def spd_bins(spd):
     :param spd: speed in km/hr
     :return: bin indicator from 1-5    
     """
+    spdbin = 0
     if spd<15:
         spdbin = 1
     elif spd>=15 and spd<25:

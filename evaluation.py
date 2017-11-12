@@ -66,8 +66,8 @@ def get_event_zscore(evt_type, s_utc, e_utc, acc_x, acc_y, spd):
     for i in range(dt_num):
         
         #average speed
-        sec_s_spd[i] = spd.loc[spd.index[s_idx+sec_idx[i]*stepSize]]
-        sec_e_spd[i] = spd.loc[spd.index[s_idx+sec_idx[i+1]*stepSize]]
+        sec_s_spd[i] = spd.loc[spd.index[s_idx+sec_idx[i]*stepSize-1]]
+        sec_e_spd[i] = spd.loc[spd.index[s_idx+sec_idx[i+1]*stepSize-1]]
         sec_spd[i] = spd.loc[spd.index[s_idx+sec_idx[i]*stepSize]:spd.index[s_idx+sec_idx[i+1]*stepSize]].mean()
         
         #speed bin subject to average speed
