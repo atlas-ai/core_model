@@ -186,7 +186,10 @@ def event_eva(acc_x, acc_y, spd, df_evt):
             df_evaluation.iloc[i, df_evaluation.columns.get_loc('sec'+str(j+1)+'_lat_rt_z')] = lat_rt_z[j]
             
     df_evaluation = df_evaluation.dropna(how='all') 
-    
+    print ("\n")
+    print ("Event evaluation ")
+    print (df_evaluation)
+      
     #output_id = data_file.replace('acc.xlsx', 'evaluation.csv')    
     #df_evaluation.to_csv(output_id, index=False)
     
@@ -212,6 +215,10 @@ def acc_eva(df_acc, z_threshold):
         elif df_acc['max_acc'][i]<0:
             acc_score = dst.z_score(df_acc['max_acc'][i],param['dec_ave'][0],np.sqrt(param['dec_var'][0]))            
             df_acc_eva.iloc[i, df_acc_eva.columns.get_loc('score')] = round(-1*(acc_score+z_threshold)*alert_score,0)
+    
+    print ("\n")
+    print ("Acceleration evaluation ")
+    print (df_acc_eva)
     
     return df_acc_eva
 
@@ -275,7 +282,11 @@ def eva_sum(user_id, df_evt_eva, df_acc_eva):
 
     df_summary.drop_duplicates()
     df_summary = df_summary.sort_values('s_utc', ascending=True) 
-    df_summary = df_summary.reset_index(drop=True)    
+    df_summary = df_summary.reset_index(drop=True)
+    
+    print ("\n")
+    print ("Final Summary ")
+    print (df_summary)    
     
     return df_summary
 
