@@ -1,16 +1,19 @@
 import json
 import uuid
 import time
+import argparse
 import pandas as pd
 from pipeline_processor.utils import connect_db
 
 TIME_INTERVAL = 1
 
 if __name__ == '__main__':
-    filename = "test/test_data/atlas_ai_data_18561c11-dd73-4ec9-9ca0-42b13c28048f.csv"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-f", "--file", help="CSV file used the read measurements data from. For instance test/test_data/atlas_ai_data_2017_10_20.csv")
+    args = parser.parse_args()
 
     # Test real data
-    df = pd.read_csv(filename, sep=';')
+    df = pd.read_csv(args.file, sep=';')
     conn = connect_db()
     curs = conn.cursor()
 
@@ -44,7 +47,7 @@ if __name__ == '__main__':
             curs.execute(insert_query)
             conn.commit()
 
-            time.sleep(TIME_INTERVAL)
+            time.sleep(TIME_INTERVAL/2)
 
         tmp_t += TIME_INTERVAL
 
