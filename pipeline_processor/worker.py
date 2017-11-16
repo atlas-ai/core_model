@@ -80,7 +80,7 @@ class Worker(Process):
 
                 # If data hasn't been processed yet then store the results
                 if df_processed.empty or df_processed.ix[0]['status'] != Status.PROCESSED.value:
-                    df_sum.to_sql(name='detected_events', con=self.engine, if_exists='append')
+                    df_sum.to_sql(name='detected_events', con=self.engine, if_exists='append', index=False)
                     print('RESULTS SAVED')
             else:
                 print('ALGORITHM DIDN\'T RETURN ANYTHING')
