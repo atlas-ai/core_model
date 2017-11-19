@@ -144,20 +144,21 @@ def execute_algorithm(imu, gps, base_id):
     return df_sum
 
 #Clean final result dataframe
-def clean_results(df_sum):
+def clean_results(base_id, df_sum):
     """ clean result table at the end of the run
     
     :param df_sum: result table
     :return : cleaned result table in dataframe format
     """
-    df = df_sum[df_sum['d']>0]
-    df = df.sort_values(['s_utc','prob'], ascending=[True,False]) 
+    df = df_sum.replace('(null)', np.NaN)
+    df = df[df['id']==base_id]
+    df = df[df['d']>0]
+    df = df.sort_values(['s_utc','prob'], ascending=[True,False])
     df = df.drop_duplicates(['type','s_utc'])
     df = df.reset_index(drop=True) 
     df['duplicate']=np.NaN
     dfLen = df.shape[0]
     for i in range(1, dfLen):
-        print(i)
         if df['type'][i]==df['type'][i-1]:
             if np.abs((df['s_utc'][i]-df['s_utc'][i-1]).total_seconds())<=5:
                 df.iloc[i, df.columns.get_loc('duplicate')] = 1    
