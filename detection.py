@@ -158,6 +158,9 @@ def event_detection(rot_z, crs, spd, param):
     df_event = df_event[df_event['prob'] > pro_threshold]               
     df_event = df_event.sort_values(['type', 'e_idx', 'prob'], ascending=[True, True, False])  
     df_event = df_event.reset_index(drop=True)   
+    #print ("\n")
+    #print ("Detection of events without removing overlaps:")
+    #print (df_event)
        
     return df_event
 
@@ -195,6 +198,9 @@ def event_summary(df_event):
         df_event = df_event.loc[df_event.reset_index().groupby(['overlap'])['prob'].idxmax()]
         df_event = df_event.reset_index(drop=True) 
         df_event = df_event.drop('overlap', axis=1)
+        #print ("\n")
+        #print ("Detection of events: Remove overlaps with same event types ")
+        #print (df_event)
         
         #Repeat selecting process to remove overlaps with different event types
         df_event = df_event.sort_values(['e_timestamp', 'prob'], ascending=[True, False])  
@@ -224,11 +230,17 @@ def event_summary(df_event):
         df_event = df_event.drop('overlap', axis=1)
         df_event['s_idx'] = df_event['s_idx'].astype(int)
         df_event['e_idx'] = df_event['e_idx'].astype(int)
+        #print ("\n")
+        #print ("Detection of events: Remove overlaps with different event types ")
+        #print (df_event)
         
         df_event['s_utc'] = pd.to_datetime(df_event['s_timestamp']/1000000000, unit='s')
         df_event['e_utc'] = pd.to_datetime(df_event['e_timestamp']/1000000000, unit='s')
         df_event = df_event.drop(['s_idx','e_idx','s_timestamp','e_timestamp'], axis=1)
         df_event = df_event[['type','d','s_utc','e_utc','s_spd','e_spd','ave_acc','s_crs','e_crs','prob']]
+        #print ("\n")
+        #print ("Detection of events: Final table ")
+        #print (df_event)
             
     return df_event                
 
@@ -276,6 +288,9 @@ def excess_acc_detection(acc_x, crs, spd, df_param, z_threshold):
                 max_dec = 0
     
     df_acc_sum = df_acc_sum.dropna(how='all')
+    #print ("\n")
+    #print ("Detection of acceleration: Initial screening ")
+    #print (df_acc_sum)
     
     #remove duplicate records
     if df_acc_sum.empty==False:
@@ -308,8 +323,11 @@ def excess_acc_detection(acc_x, crs, spd, df_param, z_threshold):
                 df_acc_sum.iloc[i,df_acc_sum.columns.get_loc('max_acc')]=-1*temp_max_dec
         
         df_acc_sum = df_acc_sum.drop('duplicate',axis=1)
+        #print ("\n")
+        #print ("Detection of acceleration: Point ")
+        #print (df_acc_sum)
         
-        #expand maximum acc at a point to a period
+        #expand maximum acc from a point to a period
         accLen = df_acc_sum.shape[0]
         for i in range(accLen):
             idx = acc_x.index.searchsorted(df_acc_sum['e_utc'][i])            
@@ -342,6 +360,10 @@ def excess_acc_detection(acc_x, crs, spd, df_param, z_threshold):
                 duration = (e_utc-s_utc)/np.timedelta64(1, 's')
                 df_acc_sum.iloc[i,df_acc_sum.columns.get_loc('d')]=duration
                 df_acc_sum.iloc[i,df_acc_sum.columns.get_loc('ave_acc')]= (e_spd-s_spd)/duration/3.6/9.8
+        
+        #print ("\n")
+        #print ("Detection of acceleration: Period ")
+        #print (df_acc_sum)
         
     return df_acc_sum
 

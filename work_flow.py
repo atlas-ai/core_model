@@ -126,7 +126,48 @@ def evaluation_summary(user_id, df_evt_eva, df_acc_eva):
     df_summary = feva.eva_sum(user_id, df_evt_eva, df_acc_eva)        
     return df_summary
 
+#Execute main algorithms
+def execute_algorithm(imu, gps, base_id):
+    """ execute main algorithms 
+    
+    :param imu: imu data
+    :param gps: gps data
+    :return : result table in dataframe format
+    """    
+    df_fc = convert_frame(imu, gps)
+    acc_x, acc_y, rot_z, crs, spd = apply_filter(df_fc, n_smooth=20)
+    df_evt = event_detection_model(rot_z, crs, spd)
+    df_acc = acc_detection_model(acc_x, crs, spd, z_threshold=6)
+    df_evt_eva = evt_evaluation_model(acc_x, acc_y, spd, df_evt)
+    df_acc_eva = acc_evaluation_model(df_acc, z_threshold=6)
+    df_sum = evaluation_summary(base_id, df_evt_eva, df_acc_eva)
+    return df_sum
 
+#Clean final result dataframe
+def clean_results(base_id, df_sum):
+    """ clean result table at the end of the run
+    
+    :param df_sum: result table
+    :return : cleaned result table in dataframe format
+    """
+    df = df_sum.replace('(null)', np.NaN)
+    df = df[df['id']==base_id]
+    df = df[df['d']>0]
+    df = df.sort_values(['s_utc','prob'], ascending=[True,False])
+    df = df.drop_duplicates(['type','s_utc'])
+    df = df.reset_index(drop=True) 
+    df['duplicate']=np.NaN
+    dfLen = df.shape[0]
+    for i in range(1, dfLen):
+        if df['type'][i]==df['type'][i-1]:
+            if np.abs((df['s_utc'][i]-df['s_utc'][i-1]).total_seconds())<=5:
+                df.iloc[i, df.columns.get_loc('duplicate')] = 1    
+    df = df[df['duplicate']!=1.0]
+    df = df.drop('duplicate', axis=1)
+    df = df.reset_index(drop=True)
+    return df   
+
+    
 ###############################
 ####       Main Module      ###
 ###############################    
@@ -150,13 +191,8 @@ def main_work_flow(file_num):
     imu_sheet = "IMU"
     
     imu, gps = clean_data(filename, imu_sheet, gps_sheet)
-    df_fc = convert_frame(imu, gps)
-    acc_x, acc_y, rot_z, crs, spd = apply_filter(df_fc, n_smooth=20)
-    df_evt = event_detection_model(rot_z, crs, spd)
-    df_acc = acc_detection_model(acc_x, crs, spd, z_threshold=6)
-    df_evt_eva = evt_evaluation_model(acc_x, acc_y, spd, df_evt)
-    df_acc_eva = acc_evaluation_model(df_acc, z_threshold=6)
-    df_sum = evaluation_summary(base_id, df_evt_eva, df_acc_eva)
+
+    df_sum = execute_algorithm(imu, gps, base_id)
     
     df_sum.to_csv(base_id+"_sum.csv",index=False)
     
@@ -195,7 +231,7 @@ def read_new_data(filename, track_id):
     return imu, gps
     
     
-    
+
     
     
     
