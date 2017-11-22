@@ -35,5 +35,19 @@ def diff_t(s):
     :param s: time indexed series
     :return: time differentiate of s on a second
     """
-    res = s.diff() / s.index.to_series().diff().dt.seconds
+    res = s.diff().bfill() / s.index.to_series().diff().bfill().dt.total_seconds()
+    return res
+
+
+def signal_err(s1, s2):
+    """ computes the norm of the difference of 2 series
+
+    This is a simple way to caracterize the difference between the 2 series
+
+    :param s1: pandas series
+    :param s2: pandas series
+    :return: norm of the difference of the 2 series
+    """
+    ds = s1 - s2
+    res = np.sqrt(np.square(ds))
     return res
