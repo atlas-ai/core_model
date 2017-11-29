@@ -18,9 +18,9 @@ if __name__ == '__main__':
     conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
 
     curs = conn.cursor()
-    curs.execute("LISTEN new_measurements;")
+    curs.execute("LISTEN notifications;")
 
-    print("Waiting for notifications on channel 'new_measurements'")
+    print("Waiting for notifications on channel 'notifications'")
 
     while True:
         if select.select([conn], [], [], 5) == ([], [], []):

@@ -144,14 +144,14 @@ def execute_algorithm(imu, gps, base_id):
     return df_sum
 
 #Clean final result dataframe
-def clean_results(base_id, df_sum):
+def clean_results(track_uuid, df_detected_events):
     """ clean result table at the end of the run
     
-    :param df_sum: result table
+    :param df_detected_events: result table
     :return : cleaned result table in dataframe format
     """
-    df = df_sum.replace('(null)', np.NaN)
-    df = df[df['id']==base_id]
+    df = df_detected_events.replace('(null)', np.NaN)
+    df = df[df['id'] == track_uuid]
     df = df[df['d']>0]
     df = df.sort_values(['s_utc','prob'], ascending=[True,False])
     df = df.drop_duplicates(['type','s_utc'])

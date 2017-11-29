@@ -26,7 +26,8 @@ if __name__ == '__main__':
     max_t = df['t'].max()
     tmp_t = min_t
 
-    print('\nTOTAL SECONDS IN TRACK:', int(max_t - min_t), '\n')
+    print('\nTOTAL SECONDS IN TRACK:', int(max_t - min_t))
+    print('UUID:', uuid_str, '\n')
 
     while tmp_t < max_t:
         df_filter = df[(df['t'] >= tmp_t) & (df['t'] < tmp_t + TIME_INTERVAL)]
