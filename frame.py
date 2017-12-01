@@ -71,6 +71,72 @@ def car_acceleration(rot_rate_x, rot_rate_y, rot_rate_z,
     return res
 
 
+def car_acceleration_from_gps(course,speed, g=9.8):
+    """ Provide the acceleration and rotation rate of the car from the gps data only
+
+    To use the GPS data, we consider that the car is a rigid body that can only rotate along the `z` axis
+
+    we have
+    - r_rate_x_gps $ \sim 0 $
+    - r_rate_y_gps $ \sim 0 $
+    - r_rate_z_gps = $ d_{t}(course) $
+
+    where $d_{t}$ is the time derivative
+
+    The acceleration can be derived from curvilinear coordinates
+    that is
+
+    $\vec{v}= \dot{s}\vec{e_t}$
+
+    $\vec{a}= \ddot{s}\vec{e_t}+\dot{s}\dot{\theta}\vec{e_n}$
+
+    where $s$ is the curvilinear coordinate , $\vec{e_t}$ the tangantial vector
+    to the trajectory, $\vec{e_n}$ the normal vector to the trajectory,
+    $\theta$ the angle of the trajectory with a given direction and $\dot{()}$ is the time derivative
+
+    Back to our notation where
+
+    $course = \theta$
+
+    $\vec{e_t} = \vec{e_x}$
+
+    $\vec{e_n} = \vec{e_y}$
+
+    $\dot{s} = speed$
+
+    This gives
+
+    - $acc\_x\_gps =  - d_{t}(speed) / g $
+    - $acc\_y\_gps = - speed \times  d_{t}(theta) / g$
+    - $acc\_z\_gps \sim 0  $
+
+    Where
+    - g is the hearth gravity acceleration 9.8 m/s^2 so the acceleration units
+      are coherent with imu data
+    - the minus sign in the acceleration comes from the fact that the imu
+      perceive a force that is in the opposite direction of the car acceleration
+
+
+    With those formula it is then easy to compare gps and imu data in the car frame
+
+    :param course: gps course in radian
+    :param speed:  gps speed in m/s
+    :param g: acceleration gravity in m/s^2
+    :return: acceleration and rotation rates in the car frame
+    """
+
+    r_rate_z_gps = interpolation.diff_t(course)
+    acc_x_gps = - interpolation.diff_t(speed) / g
+    acc_y_gps = - r_rate_z_gps * speed /g
+    res = pd.DataFrame(
+        {'acc_x_gps':acc_x_gps, 'acc_y_gps':acc_y_gps, 'acc_z_gps': 0,
+         'r_rate_x_gps': 0, 'r_rate_y_gps': 0, 'r_rate_z_gps': r_rate_z_gps},
+        columns=['acc_x_gps', 'acc_y_gps', 'acc_z_gps', 'r_rate_x_gps',
+                 'r_rate_y_gps', 'r_rate_z_gps']
+    )
+    return res
+
+
 def course_to_frame(course):
     """ provides the geoframe of a car given the gps course angle
 
