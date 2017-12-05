@@ -1,4 +1,5 @@
 import json
+import logging
 import settings
 import pandas as pd
 import cleaning as fin
@@ -48,27 +49,30 @@ class Worker(Process):
             gps = fin.gps_data(gps_data)
             imu = fin.imu_data(imu_data)
 
-            df_sum = execute_algorithm(imu, gps, payload_data['track_uuid'])
+            try:
+                df_sum = execute_algorithm(imu, gps, payload_data['track_uuid'])
 
-            if not df_sum.empty:
-                print('UNIQUE ALGORITHM RESULTS:', df_sum['type'].unique())
-                # Check if data has been processed already
-                query = """
-                        SELECT status
-                        FROM measurement
-                        WHERE (data->>'t')::numeric = '{timestamp_from}'::numeric
-                            AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
-                        LIMIT 1
-                    """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
-                               track_uuid=payload_data['track_uuid'])
-                df_processed = pd.read_sql_query(query, con=self.engine)
+                if not df_sum.empty:
+                    print('UNIQUE ALGORITHM RESULTS:', df_sum['type'].unique())
+                    # Check if data has been processed already
+                    query = """
+                            SELECT status
+                            FROM measurement
+                            WHERE (data->>'t')::numeric = '{timestamp_from}'::numeric
+                                AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
+                            LIMIT 1
+                        """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
+                                   track_uuid=payload_data['track_uuid'])
+                    df_processed = pd.read_sql_query(query, con=self.engine)
 
-                # If data hasn't been processed yet then store the results
-                if df_processed.empty or df_processed.ix[0]['status'] != Status.PROCESSED.value:
-                    df_sum.to_sql(name='detected_events', con=self.engine, if_exists='append', index=False)
-                    print('RESULTS SAVED')
-            else:
-                print('ALGORITHM DIDN\'T RETURN ANYTHING')
+                    # If data hasn't been processed yet then store the results
+                    if df_processed.empty or df_processed.ix[0]['status'] != Status.PROCESSED.value:
+                        df_sum.to_sql(name='detected_events', con=self.engine, if_exists='append', index=False)
+                        print('RESULTS SAVED')
+                else:
+                    print('ALGORITHM DIDN\'T RETURN ANYTHING')
+            except BaseException as e:
+                logging.exception("AN EXCEPTION OCURRED")
 
             # No matter if the algorithm returned any results or not, update measurements data and set it as processed
             query = """
