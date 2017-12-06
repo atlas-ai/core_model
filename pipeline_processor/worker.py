@@ -7,6 +7,7 @@ import cleaning as fin
 from enum import Enum
 from multiprocessing import Process
 from sqlalchemy import create_engine
+from pipeline_processor import replay
 from work_flow import execute_algorithm, clean_results
 from pipeline_processor.utils import connect_db, get_detected_events_for_track, get_measurements
 
@@ -15,6 +16,11 @@ class Status(Enum):
     UNPROCESSED = 'unprocessed'
     PROCESSING = 'processing'
     PROCESSED = 'processed'
+
+
+class Events(Enum):
+    TRACK_FINISHED = 'track_finished'
+    REPLAY = 'replay'
 
 
 class Worker(Process):
@@ -29,6 +35,12 @@ class Worker(Process):
         for data in iter(self.queue.get, None):
             data = json.loads(data)
             payload_data = data['payload']['data']
+
+            if 'name' in payload_data and payload_data['name'] == Events.REPLAY.value:
+                replay.run(track_uuid=payload_data['original_track_uuid'],
+                           new_track_uuid=payload_data['new_track_uuid'],
+                           engine=self.engine)
+                return
 
             print('\nNEW WORKER LAUNCHED, TRACK_UUID', payload_data['track_uuid'])
             print('TIMESTAMP FROM:', data['oldest_unprocessed_timestamp'], 'TO:', payload_data['t'], 'DIFF:',
@@ -97,7 +109,7 @@ class Worker(Process):
             con.commit()
 
             # Check if the data coming is a "track_finished" event and if so, call the track cleanup function
-            if 'name' in payload_data and payload_data['name'] == 'track_finished':
+            if 'name' in payload_data and payload_data['name'] == Events.TRACK_FINISHED.value:
                 print('track_finished event received')
                 df_detected_events = get_detected_events_for_track(track_uuid=payload_data['track_uuid'],
                                                                    engine=self.engine)
