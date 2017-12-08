@@ -16,8 +16,8 @@ import interpolation
 
 def car_acceleration(rot_rate_x, rot_rate_y, rot_rate_z,
                      user_a_x, user_a_y, user_a_z,
-                     g_x, g_y, g_z,
-                     m_x, m_y, m_z, course, speed):
+                     g_x, g_y, g_z, m_x, m_y, m_z, 
+                     lat, long, alt, course, speed):
     """ provides the rotation rate and acceleration in the car frame
 
     the function expect pandas series with a time index as its arguments
@@ -37,14 +37,20 @@ def car_acceleration(rot_rate_x, rot_rate_y, rot_rate_z,
     :param g_z: imu gravity component toward z
     :param m_x: imu magnetic field component toward x
     :param m_y: imu magnetic field component toward y
-    :param m_z: imu magnetic field component toward z
+    :param m_z: imu magnetic field component toward z    
+    :param lat: gps latitude in degree
+    :param long: gps longitude in degree
+    :param alt: gps altitude in metre
     :param course: gps course in radians
     :return: 
     """
 
     i = rot_rate_x.index
     course = interpolation.smooth_angle(course)
-    course_imu = interpolation.interpolate_to_index(course, i, method='time')
+    course_imu = interpolation.interpolate_to_index(course, i, method='time') 
+    lat_imu = interpolation.interpolate_to_index(lat, i, method='time')
+    long_imu = interpolation.interpolate_to_index(long, i, method='time')    
+    alt_imu = interpolation.interpolate_to_index(alt, i, method='time')
     speed_imu = interpolation.interpolate_to_index(speed, i, method='time')
     car_to_geo = course_to_frame(course_imu)
 
@@ -64,8 +70,13 @@ def car_acceleration(rot_rate_x, rot_rate_y, rot_rate_z,
     r_rate_car = phone_to_car * r_rate_phone * np.invert(phone_to_car)
     r_rate_car_v = qextra.from_quaternion(r_rate_car, label='r_rate_')
     r_rate_car_v.drop(['r_rate_s'],inplace=True, axis=1)
-
-    res = pd.concat([user_a_car_v, r_rate_car_v],axis = 1)
+    
+    #The minus sign in the acceleration comes from the fact that 
+    #the imu perceive a force that is in the opposite direction of the car acceleration
+    res = pd.concat([-1.0*user_a_car_v, r_rate_car_v],axis = 1)
+    res['lat'] = lat_imu 
+    res['long'] = long_imu   
+    res['alt'] = alt_imu
     res['course'] = course_imu
     res['speed'] = speed_imu
     return res
@@ -106,17 +117,15 @@ def car_acceleration_from_gps(course,speed, g=9.8):
 
     This gives
 
-    - $acc\_x\_gps =  - d_{t}(speed) / g $
-    - $acc\_y\_gps = - speed \times  d_{t}(theta) / g$
+    - $acc\_x\_gps =  d_{t}(speed) / g $
+    - $acc\_y\_gps =  speed \times  d_{t}(theta) / g$
     - $acc\_z\_gps \sim 0  $
 
     Where
-    - g is the hearth gravity acceleration 9.8 m/s^2 so the acceleration units
+    - g is the earth gravity acceleration 9.8 m/s^2 so the acceleration units
       are coherent with imu data
-    - the minus sign in the acceleration comes from the fact that the imu
-      perceive a force that is in the opposite direction of the car acceleration
-
-
+    - signs are corrected to make sure both gps and imu accelerations are in line with car accelerations  
+    
     With those formula it is then easy to compare gps and imu data in the car frame
 
     :param course: gps course in radian
@@ -126,8 +135,8 @@ def car_acceleration_from_gps(course,speed, g=9.8):
     """
 
     r_rate_z_gps = interpolation.diff_t(course)
-    acc_x_gps = - interpolation.diff_t(speed) / g
-    acc_y_gps = - r_rate_z_gps * speed /g
+    acc_x_gps = interpolation.diff_t(speed) / g
+    acc_y_gps = r_rate_z_gps * speed /g
     res = pd.DataFrame(
         {'acc_x_gps':acc_x_gps, 'acc_y_gps':acc_y_gps, 'acc_z_gps': 0,
          'r_rate_x_gps': 0, 'r_rate_y_gps': 0, 'r_rate_z_gps': r_rate_z_gps},
