@@ -31,12 +31,17 @@ def read_df(df):
     #df = pd.read_excel(file_name)
     #df.set_index(['t'], inplace=True)
     df = df.dropna(how='all')
-    acc_x = -df['acc_x']
+    acc_x = df['acc_x']
     acc_y = df['acc_y']
     rot_z = df['r_rate_z']
+    lat = df['lat']
+    long = df['long']
+    alt = df['alt']
     crs = df['course']
     spd = df['speed']*3.6
-    return acc_x, acc_y, rot_z, crs, spd
+    acc_x_gps = df['acc_x_gps']
+    acc_y_gps = df['acc_y_gps']
+    return acc_x, acc_y, rot_z, lat, long, alt, crs, spd, acc_x_gps, acc_y_gps
 
 
 def read_evt_param(csv_file):
@@ -45,8 +50,8 @@ def read_evt_param(csv_file):
     :param csv_file: input parameter file in .csv format
     :return : parameters in array format
     """
-    param = np.asarray(pd.read_csv(csv_file, index_col=0)).transpose()
-    return param
+    evt_param = np.asarray(pd.read_csv(csv_file, index_col=0)).transpose()
+    return evt_param
 
 
 def read_acc_param(csv_file):
@@ -55,8 +60,8 @@ def read_acc_param(csv_file):
     :param csv_file: input parameter file in .csv format
     :return : parameters in dataframe ormat
     """
-    df_acc_param = pd.read_csv(csv_file)
-    return df_acc_param   
+    acc_param = pd.read_csv(csv_file)
+    return acc_param   
 
 
 def read_eva_param(csv_file):
@@ -65,8 +70,8 @@ def read_eva_param(csv_file):
     :param param_file: csv file
     :return: data frame of coeficients
     """
-    df_eva_param = pd.read_csv(csv_file, index_col=0)
-    return df_eva_param
+    eva_param = pd.read_csv(csv_file, index_col=0)
+    return eva_param
 
 
  
