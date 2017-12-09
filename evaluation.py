@@ -67,27 +67,27 @@ def get_event_zscore(dtype, s_utc, e_utc, acc_x, acc_y, spd, samp_rate):
     for i in range(dt_num):
         
         #average speed
-        sec_s_spd[i] = spd.loc[spd.index[s_idx+sec_idx[i]*stepSize-1]]
+        sec_s_spd[i] = spd.loc[spd.index[s_idx+sec_idx[i]*stepSize]]
         sec_e_spd[i] = spd.loc[spd.index[s_idx+sec_idx[i+1]*stepSize-1]]
-        sec_spd[i] = spd.loc[spd.index[s_idx+sec_idx[i]*stepSize]:spd.index[s_idx+sec_idx[i+1]*stepSize]].mean()
+        sec_spd[i] = spd.loc[spd.index[s_idx+sec_idx[i]*stepSize]:spd.index[s_idx+sec_idx[i+1]*stepSize-1]].mean()
         
         #speed bin subject to average speed
         spd_bin[i] = dst.spd_bins(sec_spd[i])
         
         #z score for acceleration        
-        acc_z[i] = dst.z_score(acc_x.loc[acc_x.index[s_idx+sec_idx[i]*stepSize]:acc_x.index[s_idx+sec_idx[i+1]*stepSize]].where(acc_x>0).max(),\
+        acc_z[i] = dst.z_score(acc_x.loc[acc_x.index[s_idx+sec_idx[i]*stepSize]:acc_x.index[s_idx+sec_idx[i+1]*stepSize-1]].where(acc_x>0).max(),\
                       coef[evt_id+'_sec'+str(i+1)+'_acc_ave'].iloc[(spd_bin[i]-1).astype(int)],\
                       np.sqrt(coef[evt_id+'_sec'+str(i+1)+'_acc_var'].iloc[(spd_bin[i]-1).astype(int)]))
         #z score for deceleration        
-        dec_z[i] = dst.z_score(acc_x.loc[acc_x.index[s_idx+sec_idx[i]*stepSize]:acc_x.index[s_idx+sec_idx[i+1]*stepSize]].where(acc_x<0).min(),\
+        dec_z[i] = dst.z_score(acc_x.loc[acc_x.index[s_idx+sec_idx[i]*stepSize]:acc_x.index[s_idx+sec_idx[i+1]*stepSize-1]].where(acc_x<0).min(),\
                       coef[evt_id+'_sec'+str(i+1)+'_dec_ave'].iloc[(spd_bin[i]-1).astype(int)],\
                       np.sqrt(coef[evt_id+'_sec'+str(i+1)+'_dec_var'].iloc[(spd_bin[i]-1).astype(int)]))
         #z score for lateral force (left turn, tilting to the right)        
-        lat_lt_z[i] = dst.z_score(acc_y.loc[acc_y.index[s_idx+sec_idx[i]*stepSize]:acc_y.index[s_idx+sec_idx[i+1]*stepSize]].where(acc_y>0).max(),\
+        lat_lt_z[i] = dst.z_score(acc_y.loc[acc_y.index[s_idx+sec_idx[i]*stepSize]:acc_y.index[s_idx+sec_idx[i+1]*stepSize-1]].where(acc_y>0).max(),\
                       coef[evt_id+'_sec'+str(i+1)+'_lat_lt_ave'].iloc[(spd_bin[i]-1).astype(int)],\
                       np.sqrt(coef[evt_id+'_sec'+str(i+1)+'_lat_lt_var'].iloc[(spd_bin[i]-1).astype(int)]))
         #z score for lateral force (right turn, tilting to the left)        
-        lat_rt_z[i] = dst.z_score(acc_y.loc[acc_y.index[s_idx+sec_idx[i]*stepSize]:acc_y.index[s_idx+sec_idx[i+1]*stepSize]].where(acc_y<0).min(),\
+        lat_rt_z[i] = dst.z_score(acc_y.loc[acc_y.index[s_idx+sec_idx[i]*stepSize]:acc_y.index[s_idx+sec_idx[i+1]*stepSize-1]].where(acc_y<0).min(),\
                       coef[evt_id+'_sec'+str(i+1)+'_lat_rt_ave'].iloc[(spd_bin[i]-1).astype(int)],\
                       np.sqrt(coef[evt_id+'_sec'+str(i+1)+'_lat_rt_var'].iloc[(spd_bin[i]-1).astype(int)]))
             
@@ -109,25 +109,29 @@ def individual_scoring(acc_z, dec_z, lat_lt_z, lat_rt_z):
     warning_score = 5
     alert_score = 10
     
-    acc_warning_score = np.where((acc_z>warning_threshold) & (acc_z<alert_threshold),\
-                         (acc_z/warning_threshold-1)*warning_score , 0)
-    acc_alert_score = np.where((acc_z>=alert_threshold),\
-                         (acc_z/alert_threshold-1)*alert_score+(alert_score-warning_score) , 0)
+    acc_warning_score = np.where((dst.compare_nan_array(np.greater, acc_z, warning_threshold)) &\
+                                 (dst.compare_nan_array(np.less, acc_z, alert_threshold)),\
+                                 (acc_z/warning_threshold-1)*warning_score , 0)
+    acc_alert_score = np.where((dst.compare_nan_array(np.greater_equal, acc_z, alert_threshold)),\
+                                (acc_z/alert_threshold-1)*alert_score+(alert_score-warning_score) , 0)
     
-    dec_warning_score = np.where((dec_z<-warning_threshold) & (dec_z>-alert_threshold),\
-                         (-dec_z/warning_threshold-1)*warning_score , 0)
-    dec_alert_score = np.where((dec_z<=-alert_threshold),\
-                         (-dec_z/alert_threshold-1)*alert_score+(alert_score-warning_score) , 0)
+    dec_warning_score = np.where((dst.compare_nan_array(np.less, dec_z, -warning_threshold)) &\
+                                 (dst.compare_nan_array(np.greater, dec_z, -alert_threshold)),\
+                                 (-dec_z/warning_threshold-1)*warning_score , 0)    
+    dec_alert_score = np.where((dst.compare_nan_array(np.less_equal, dec_z, -alert_threshold)),\
+                               (-dec_z/alert_threshold-1)*alert_score+(alert_score-warning_score) , 0)
     
-    lat_lt_warning_score = np.where((lat_lt_z>warning_threshold) & (lat_lt_z<alert_threshold),\
-                         (lat_lt_z/warning_threshold-1)*warning_score , 0)
-    lat_lt_alert_score = np.where((lat_lt_z>=alert_threshold),\
-                         (lat_lt_z/alert_threshold-1)*alert_score+(alert_score-warning_score) , 0)
+    lat_lt_warning_score = np.where((dst.compare_nan_array(np.greater, lat_lt_z, warning_threshold)) &\
+                                    (dst.compare_nan_array(np.less, lat_lt_z, alert_threshold)),\
+                                    (lat_lt_z/warning_threshold-1)*warning_score , 0)    
+    lat_lt_alert_score = np.where((dst.compare_nan_array(np.greater_equal, lat_lt_z, alert_threshold)),\
+                                  (lat_lt_z/alert_threshold-1)*alert_score+(alert_score-warning_score) , 0)
     
-    lat_rt_warning_score = np.where((lat_rt_z<-warning_threshold) & (lat_rt_z>-alert_threshold),\
-                         (-lat_rt_z/warning_threshold-1)*warning_score , 0)
-    lat_rt_alert_score = np.where((lat_rt_z<=-alert_threshold),\
-                         (-lat_rt_z/alert_threshold-1)*alert_score+(alert_score-warning_score) , 0)
+    lat_rt_warning_score = np.where((dst.compare_nan_array(np.less, lat_rt_z, -warning_threshold)) &\
+                                    (dst.compare_nan_array(np.greater, lat_rt_z, -alert_threshold)),\
+                                    (-lat_rt_z/warning_threshold-1)*warning_score , 0)
+    lat_rt_alert_score = np.where((dst.compare_nan_array(np.less_equal, lat_rt_z, -alert_threshold)),\
+                                  (-lat_rt_z/alert_threshold-1)*alert_score+(alert_score-warning_score) , 0)
     
     tot_score = round((acc_warning_score + acc_alert_score + dec_warning_score + dec_alert_score + \
     lat_lt_warning_score + lat_lt_alert_score + lat_rt_warning_score + lat_rt_alert_score).sum(),0)
