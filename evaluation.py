@@ -53,12 +53,8 @@ def get_event_zscore(dtype, s_utc, e_utc, acc_x, acc_y, spd, samp_rate):
         
     s_idx = acc_x.index.searchsorted(s_utc)
     e_idx = acc_x.index.searchsorted(e_utc)
-<<<<<<< HEAD
     stepSize = int(e_idx-s_idx+1)//20
-=======
-    stepSize = (round((e_idx-s_idx+1)/samp_rate,0)).astype(int)
->>>>>>> d0c5861a248849b83c748e8d70666f477a0f3b50
-    
+
     sec_s_spd = np.zeros(dt_num)
     sec_e_spd = np.zeros(dt_num)
     sec_spd = np.zeros(dt_num)
