@@ -16,7 +16,13 @@ CREATE TABLE measurement (
  unprocessed measurements.
 `psql -U [database_user] -h localhost -p 5432 -f pipeline_processor/trigger_procedure.sql [local_database_name]`
 
-3. Make sure your `DB_CONNECTION_STRING` in your settings is pointing to this local database
+3. Make sure your `DB_CONNECTION_STRING` in your settings is pointing to test database, and you also have `PYTHONPATH` (full system path to your core_model project) with `NUM_WORKERS`. 
+You can add following to your `~/.bashrc`
+```
+export DB_CONNECTION_STRING='postgres://{{db_user}}:{{db_pw}}@localhost:5432/{{db_name}}'
+export PYTHONPATH='/ilya/Documents/gams/data_report_fork'
+export NUM_WORKERS='4'
+```
  
 4. From the project root folder run `python test/test.py --file [test_data_file_path]`. Where the parameter `--file` is
  a path to a CSV file containing measurements from a previous track. The test script will read the data, replace the 
