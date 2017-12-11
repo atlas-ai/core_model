@@ -172,14 +172,14 @@ def execute_algorithm(imu, gps, base_id, samp_rate, n_smooth, z_threshold):
     return df_sum
 
 #Clean up results table to remove duplicates
-def clean_results(track_uuid, df_detected_event):
+def clean_results(track_uuid, df_detected_events):
     """ clean result table at the end of the run
     
     :param track_uuid: user id
     :param df_detected_event: detected events result table
     :return : cleaned result table in dataframe format
     """
-    df_cleaned = fdqu.remove_duplicates(track_uuid, df_detected_event)
+    df_cleaned = fdqu.remove_duplicates(track_uuid, df_detected_events)
     return df_cleaned
 
 

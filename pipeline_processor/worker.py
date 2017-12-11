@@ -1,4 +1,5 @@
 import json
+import logging
 import settings
 import pandas as pd
 import cleaning as fin
@@ -6,6 +7,7 @@ import cleaning as fin
 from enum import Enum
 from multiprocessing import Process
 from sqlalchemy import create_engine
+from pipeline_processor import replay
 from work_flow import execute_algorithm, clean_results
 from pipeline_processor.utils import connect_db, get_detected_events_for_track, get_measurements
 
@@ -14,6 +16,11 @@ class Status(Enum):
     UNPROCESSED = 'unprocessed'
     PROCESSING = 'processing'
     PROCESSED = 'processed'
+
+
+class Events(Enum):
+    TRACK_FINISHED = 'track_finished'
+    REPLAY = 'replay'
 
 
 class Worker(Process):
@@ -28,6 +35,12 @@ class Worker(Process):
         for data in iter(self.queue.get, None):
             data = json.loads(data)
             payload_data = data['payload']['data']
+
+            if 'name' in payload_data and payload_data['name'] == Events.REPLAY.value:
+                replay.run(track_uuid=payload_data['original_track_uuid'],
+                           new_track_uuid=payload_data['new_track_uuid'],
+                           engine=self.engine)
+                return
 
             print('\nNEW WORKER LAUNCHED, TRACK_UUID', payload_data['track_uuid'])
             print('TIMESTAMP FROM:', data['oldest_unprocessed_timestamp'], 'TO:', payload_data['t'], 'DIFF:',
@@ -48,27 +61,31 @@ class Worker(Process):
             gps = fin.gps_data(gps_data)
             imu = fin.imu_data(imu_data)
 
-            df_sum = execute_algorithm(imu, gps, payload_data['track_uuid'])
+            try:
+                df_sum = execute_algorithm(imu, gps, payload_data['track_uuid'], samp_rate=settings.SAMP_RATE,
+                                           n_smooth=settings.N_SMOOTH, z_threshold=settings.Z_THRESHOLD)
 
-            if not df_sum.empty:
-                print('UNIQUE ALGORITHM RESULTS:', df_sum['type'].unique())
-                # Check if data has been processed already
-                query = """
-                        SELECT status
-                        FROM measurement
-                        WHERE (data->>'t')::numeric = '{timestamp_from}'::numeric
-                            AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
-                        LIMIT 1
-                    """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
-                               track_uuid=payload_data['track_uuid'])
-                df_processed = pd.read_sql_query(query, con=self.engine)
+                if not df_sum.empty:
+                    print('UNIQUE ALGORITHM RESULTS:', df_sum['type'].unique())
+                    # Check if data has been processed already
+                    query = """
+                            SELECT status
+                            FROM measurement
+                            WHERE (data->>'t')::numeric = '{timestamp_from}'::numeric
+                                AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
+                            LIMIT 1
+                        """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
+                                   track_uuid=payload_data['track_uuid'])
+                    df_processed = pd.read_sql_query(query, con=self.engine)
 
-                # If data hasn't been processed yet then store the results
-                if df_processed.empty or df_processed.ix[0]['status'] != Status.PROCESSED.value:
-                    df_sum.to_sql(name='detected_events', con=self.engine, if_exists='append', index=False)
-                    print('RESULTS SAVED')
-            else:
-                print('ALGORITHM DIDN\'T RETURN ANYTHING')
+                    # If data hasn't been processed yet then store the results
+                    if df_processed.empty or df_processed.ix[0]['status'] != Status.PROCESSED.value:
+                        df_sum.to_sql(name='detected_events', con=self.engine, if_exists='append', index=False)
+                        print('RESULTS SAVED')
+                else:
+                    print('ALGORITHM DIDN\'T RETURN ANYTHING')
+            except BaseException as e:
+                logging.exception("AN EXCEPTION OCURRED")
 
             # No matter if the algorithm returned any results or not, update measurements data and set it as processed
             query = """
@@ -93,7 +110,7 @@ class Worker(Process):
             con.commit()
 
             # Check if the data coming is a "track_finished" event and if so, call the track cleanup function
-            if 'name' in payload_data and payload_data['name'] == 'track_finished':
+            if 'name' in payload_data and payload_data['name'] == Events.TRACK_FINISHED.value:
                 print('track_finished event received')
                 df_detected_events = get_detected_events_for_track(track_uuid=payload_data['track_uuid'],
                                                                    engine=self.engine)
