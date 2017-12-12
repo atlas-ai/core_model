@@ -62,7 +62,8 @@ class Worker(Process):
             imu = fin.imu_data(imu_data)
 
             try:
-                df_sum = execute_algorithm(imu, gps, payload_data['track_uuid'])
+                df_sum = execute_algorithm(imu, gps, payload_data['track_uuid'], samp_rate=settings.SAMP_RATE,
+                                           n_smooth=settings.N_SMOOTH, z_threshold=settings.Z_THRESHOLD)
 
                 if not df_sum.empty:
                     print('UNIQUE ALGORITHM RESULTS:', df_sum['type'].unique())
