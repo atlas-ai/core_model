@@ -6,8 +6,8 @@ Created on Fri Dec  8 16:16:06 2017
 @author: SeanXinZhou
 """
 
-import pandas as pd
 import numpy as np
+
 
 def plot_data_spd_n_acc(df, spd, acc_x_gps, samp_rate):
     """ return information to plot speed and acceleraiton charts
@@ -26,15 +26,13 @@ def plot_data_spd_n_acc(df, spd, acc_x_gps, samp_rate):
     
     for i in range(dataLen):
         
-        beg_utc = spd.index[spd.index == df['s_utc'][i]]
-        end_utc = spd.index[spd.index == df['e_utc'][i]]
-        step = (((end_utc-beg_utc).total_seconds())*samp_rate//20).astype(int)
-        
-        beg_idx = np.where(spd.index == df['s_utc'][i])[0]
+        beg_idx = spd.index.searchsorted(df['s_utc'][i]) 
+        end_idx = spd.index.searchsorted(df['e_utc'][i])
+        stepSize = (end_idx-beg_idx+1)/20
         
         for j in range (20):
-            df.iloc[i, df.columns.get_loc('spd_'+str(j+1))] = spd[beg_idx+j*step].values
-            df.iloc[i, df.columns.get_loc('acc_x_gps_'+str(j+1))] = acc_x_gps[beg_idx+j*step].values
+            df.iloc[i, df.columns.get_loc('spd_'+str(j+1))] = spd[int(np.floor(beg_idx+j*stepSize))]
+            df.iloc[i, df.columns.get_loc('acc_x_gps_'+str(j+1))] = acc_x_gps[int(np.floor(beg_idx+j*stepSize))]
         
     return df
 

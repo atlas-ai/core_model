@@ -51,9 +51,10 @@ def get_event_zscore(dtype, s_utc, e_utc, acc_x, acc_y, spd, samp_rate):
         dt_num = 2
         sec_idx = [0,9,19]
         
-    s_idx = acc_x.index.searchsorted(s_utc)
+    s_idx = acc_x.index.searchsorted(s_utc)  
     e_idx = acc_x.index.searchsorted(e_utc)
-    stepSize = int(e_idx-s_idx+1)//20
+    stepSize = (e_idx-s_idx+1)/20
+    #print('s_idx: %s; e_idx: %s; stepSize: %s' % (s_idx, e_idx, stepSize))
 
     sec_s_spd = np.zeros(dt_num)
     sec_e_spd = np.zeros(dt_num)
@@ -67,27 +68,30 @@ def get_event_zscore(dtype, s_utc, e_utc, acc_x, acc_y, spd, samp_rate):
     for i in range(dt_num):
         
         #average speed
-        sec_s_spd[i] = spd.loc[spd.index[s_idx+sec_idx[i]*stepSize]]
-        sec_e_spd[i] = spd.loc[spd.index[s_idx+sec_idx[i+1]*stepSize-1]]
-        sec_spd[i] = spd.loc[spd.index[s_idx+sec_idx[i]*stepSize]:spd.index[s_idx+sec_idx[i+1]*stepSize-1]].mean()
+        sec_s_spd[i] = spd.loc[spd.index[int(np.floor(s_idx+sec_idx[i]*stepSize))]]
+        sec_e_spd[i] = spd.loc[spd.index[int(np.floor(s_idx+sec_idx[i+1]*stepSize))-1]]
+        sec_spd[i] = spd.loc[spd.index[int(np.floor(s_idx+sec_idx[i]*stepSize))]:spd.index[int(np.floor(s_idx+sec_idx[i+1]*stepSize))-1]].mean()
+        #print('i: %s; sec_idx[i]: %s; s_idx+sec_idx[i]*stepSize: %s; s_idx+sec_idx[i+1]*stepSize-1: %s' % (i, sec_idx[i],\
+        #      int(np.floor(s_idx+sec_idx[i]*stepSize)), \
+        #      int(np.floor(s_idx+sec_idx[i+1]*stepSize))-1))
         
         #speed bin subject to average speed
         spd_bin[i] = dst.spd_bins(sec_spd[i])
         
         #z score for acceleration        
-        acc_z[i] = dst.z_score(acc_x.loc[acc_x.index[s_idx+sec_idx[i]*stepSize]:acc_x.index[s_idx+sec_idx[i+1]*stepSize-1]].where(acc_x>0).max(),\
+        acc_z[i] = dst.z_score(acc_x.loc[acc_x.index[int(np.floor(s_idx+sec_idx[i]*stepSize))]:acc_x.index[int(np.floor(s_idx+sec_idx[i+1]*stepSize))-1]].where(acc_x>0).max(),\
                       coef[evt_id+'_sec'+str(i+1)+'_acc_ave'].iloc[(spd_bin[i]-1).astype(int)],\
                       np.sqrt(coef[evt_id+'_sec'+str(i+1)+'_acc_var'].iloc[(spd_bin[i]-1).astype(int)]))
         #z score for deceleration        
-        dec_z[i] = dst.z_score(acc_x.loc[acc_x.index[s_idx+sec_idx[i]*stepSize]:acc_x.index[s_idx+sec_idx[i+1]*stepSize-1]].where(acc_x<0).min(),\
+        dec_z[i] = dst.z_score(acc_x.loc[acc_x.index[int(np.floor(s_idx+sec_idx[i]*stepSize))]:acc_x.index[int(np.floor(s_idx+sec_idx[i+1]*stepSize))-1]].where(acc_x<0).min(),\
                       coef[evt_id+'_sec'+str(i+1)+'_dec_ave'].iloc[(spd_bin[i]-1).astype(int)],\
                       np.sqrt(coef[evt_id+'_sec'+str(i+1)+'_dec_var'].iloc[(spd_bin[i]-1).astype(int)]))
         #z score for lateral force (left turn, tilting to the right)        
-        lat_lt_z[i] = dst.z_score(acc_y.loc[acc_y.index[s_idx+sec_idx[i]*stepSize]:acc_y.index[s_idx+sec_idx[i+1]*stepSize-1]].where(acc_y>0).max(),\
+        lat_lt_z[i] = dst.z_score(acc_y.loc[acc_y.index[int(np.floor(s_idx+sec_idx[i]*stepSize))]:acc_y.index[int(np.floor(s_idx+sec_idx[i+1]*stepSize))-1]].where(acc_y>0).max(),\
                       coef[evt_id+'_sec'+str(i+1)+'_lat_lt_ave'].iloc[(spd_bin[i]-1).astype(int)],\
                       np.sqrt(coef[evt_id+'_sec'+str(i+1)+'_lat_lt_var'].iloc[(spd_bin[i]-1).astype(int)]))
         #z score for lateral force (right turn, tilting to the left)        
-        lat_rt_z[i] = dst.z_score(acc_y.loc[acc_y.index[s_idx+sec_idx[i]*stepSize]:acc_y.index[s_idx+sec_idx[i+1]*stepSize-1]].where(acc_y<0).min(),\
+        lat_rt_z[i] = dst.z_score(acc_y.loc[acc_y.index[int(np.floor(s_idx+sec_idx[i]*stepSize))]:acc_y.index[int(np.floor(s_idx+sec_idx[i+1]*stepSize))-1]].where(acc_y<0).min(),\
                       coef[evt_id+'_sec'+str(i+1)+'_lat_rt_ave'].iloc[(spd_bin[i]-1).astype(int)],\
                       np.sqrt(coef[evt_id+'_sec'+str(i+1)+'_lat_rt_var'].iloc[(spd_bin[i]-1).astype(int)]))
             
@@ -165,7 +169,7 @@ def event_eva(acc_x, acc_y, spd, df_evt, samp_rate):
         sec_s_spd, sec_e_spd, spd_bin, acc_z, dec_z, lat_lt_z, lat_rt_z = \
         get_event_zscore(df_evt['type'][i], df_evt['s_utc'][i], df_evt['e_utc'][i], acc_x, acc_y, spd, samp_rate)
         tot_score, z_score_matrix = individual_scoring(acc_z, dec_z, lat_lt_z, lat_rt_z)
-    
+        
         df_evaluation.iloc[i, df_evaluation.columns.get_loc('type')] = df_evt['type'][i]
         df_evaluation.iloc[i, df_evaluation.columns.get_loc('prob')] = df_evt['prob'][i]
         df_evaluation.iloc[i, df_evaluation.columns.get_loc('score')] = 100.0-tot_score
