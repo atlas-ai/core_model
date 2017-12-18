@@ -52,6 +52,7 @@ def spd_bins(spd):
         spdbin = 5
     return spdbin
 
+
 def compare_nan_array(func, comp_num, target_num):
     """ compare two numbers given np.NaN
     

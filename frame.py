@@ -42,16 +42,30 @@ def car_acceleration(rot_rate_x, rot_rate_y, rot_rate_z,
     :param long: gps longitude in degree
     :param alt: gps altitude in metre
     :param course: gps course in radians
+    :param speed: gps speed in m/s2
     :return: 
     """
-
+    #Interpolation of all data in case of no entry
     i = rot_rate_x.index
+    rot_rate_x = interpolation.interpolate_to_index(rot_rate_x, i, method='time')
+    rot_rate_y = interpolation.interpolate_to_index(rot_rate_y, i, method='time')
+    rot_rate_z = interpolation.interpolate_to_index(rot_rate_z, i, method='time')
+    user_a_x = interpolation.interpolate_to_index(user_a_x, i, method='time')
+    user_a_y = interpolation.interpolate_to_index(user_a_y, i, method='time')
+    user_a_z = interpolation.interpolate_to_index(user_a_z, i, method='time')
+    g_x = interpolation.interpolate_to_index(g_x, i, method='time')
+    g_y = interpolation.interpolate_to_index(g_y, i, method='time')
+    g_z = interpolation.interpolate_to_index(g_z, i, method='time')
+    m_x = interpolation.interpolate_to_index(m_x, i, method='time')
+    m_y = interpolation.interpolate_to_index(m_y, i, method='time')
+    m_z = interpolation.interpolate_to_index(m_z, i, method='time')    
     course = interpolation.smooth_angle(course)
     course_imu = interpolation.interpolate_to_index(course, i, method='time') 
     lat_imu = interpolation.interpolate_to_index(lat, i, method='time')
     long_imu = interpolation.interpolate_to_index(long, i, method='time')    
     alt_imu = interpolation.interpolate_to_index(alt, i, method='time')
     speed_imu = interpolation.interpolate_to_index(speed, i, method='time')
+    
     car_to_geo = course_to_frame(course_imu)
 
     g = qextra.to_quaternion(g_x, g_y, g_z)
@@ -73,7 +87,9 @@ def car_acceleration(rot_rate_x, rot_rate_y, rot_rate_z,
     
     #The minus sign in the acceleration comes from the fact that 
     #the imu perceive a force that is in the opposite direction of the car acceleration
-    res = pd.concat([-1.0*user_a_car_v, r_rate_car_v],axis = 1)
+    res = pd.concat([user_a_car_v, r_rate_car_v],axis = 1)
+    res['acc_x']=-1.0*res['acc_x']
+    res['acc_y']=-1.0*res['acc_y']
     res['lat'] = lat_imu 
     res['long'] = long_imu   
     res['alt'] = alt_imu

@@ -51,11 +51,9 @@ def convert_frame(imu, gps):
                             imu['g_x'], imu['g_y'], imu['g_z'],\
                             imu['m_x'], imu['m_y'], imu['m_z'],\
                             gps['lat'], gps['long'], gps['alt'], gps['course'], gps['speed'])  
-    acc_imu = acc_imu[~acc_imu.isin(['NaN']).any(axis=1)]
-    
+    acc_imu = acc_imu[~acc_imu.isin(['NaN']).any(axis=1)]    
     acc_gps = ffc.car_acceleration_from_gps(acc_imu['course'], acc_imu['speed'])
-    df_fc = pd.concat([acc_imu, acc_gps],axis=1)
-    
+    df_fc = pd.concat([acc_imu, acc_gps],axis=1)   
     return df_fc
 
 
@@ -150,6 +148,7 @@ def evaluation_summary(user_id, df_evt_eva, df_acc_eva, spd, acc_x_gps, samp_rat
     df_final = fdqu.plot_data_spd_n_acc(df_summary, spd, acc_x_gps, samp_rate) 
     return df_final
 
+
 #Execute main algorithms
 def execute_algorithm(imu, gps, base_id, samp_rate, n_smooth, z_threshold):
     """ execute main algorithms 
@@ -163,7 +162,7 @@ def execute_algorithm(imu, gps, base_id, samp_rate, n_smooth, z_threshold):
     :return : result table in dataframe format
     """    
     df_fc = convert_frame(imu, gps)
-    acc_x, acc_y, rot_z, lat, long, alt, crs, spd, acc_x_gps, acc_y_gps = apply_filter(df_fc, n_smooth)
+    acc_x, acc_y, rot_z, lat, long, alt, crs, spd, acc_x_gps, acc_y_gps = apply_filter(df_fc, n_smooth)    
     df_evt = event_detection_model(rot_z, lat, long, alt, crs, spd, samp_rate)
     df_acc = acc_detection_model(acc_x, lat, long, alt, crs, spd, samp_rate, z_threshold)
     df_evt_eva = evt_evaluation_model(acc_x, acc_y, spd, df_evt, samp_rate)
@@ -181,8 +180,6 @@ def clean_results(track_uuid, df_detected_events):
     """
     df_cleaned = fdqu.remove_duplicates(track_uuid, df_detected_events)
     return df_cleaned
-
-
 
     
 ##########################################################
@@ -227,6 +224,7 @@ def work_flow_with_loop(file_num):
     beg_rec = 1
     end_rec = 6000
     tot_rep = (imu.shape[0]-6000)//4500+1
+    print('\n')
     
     for i in range(tot_rep):    
         if i==(tot_rep-1):
@@ -259,29 +257,33 @@ def read_new_data(filename, track_id):
     
     df = pd.read_csv(filename)
     df = df[df['track_uuid']==track_id]
-
+    
     imu = df[['t','att_pitch','att_roll','att_yaw','rot_rate_x','rot_rate_y','rot_rate_z','g_x','g_y','g_z',\
                 'user_a_x','user_a_y','user_a_z','m_x','m_y','m_z']]
-     
+    imu = imu.sort_values(by=['t'])
+    imu = imu.reset_index(drop=True)       
     imu.index = pd.to_datetime(imu['t'], unit='s')
     imu = imu[~imu.index.duplicated()]
-    imu.drop('t',axis=1)
     
     gps = df[['t','lat','long','alt','speed','course']]
-    gps['course'] = gps['course'].replace({-1.: np.nan})
-    gps['course'] = np.radians(gps['course'])
-    gps['speed'] = gps['speed'].replace({-1.: np.nan})
+    gps = df.sort_values(by=['t'])
+    gps = df.reset_index(drop=True)    
+    gps['lat'] = gps['lat'].replace('(null)', np.NaN)
+    gps['lat'] = gps['lat'].replace(-1., np.NaN)    
+    gps['long'] = gps['long'].replace('(null)', np.NaN)
+    gps['long'] = gps['long'].replace(-1., np.NaN)    
+    gps['alt'] = gps['alt'].replace('(null)', np.NaN)
+    gps['alt'] = gps['alt'].replace(-1., np.NaN)    
+    gps['course'] = gps['course'].replace('(null)', np.NaN)
+    gps['course'] = gps['course'].replace(-1., np.NaN)
+    gps['course'] = np.radians(gps['course'])    
+    gps['speed'] = gps['speed'].replace('(null)', np.NaN)
+    gps['speed'] = gps['speed'].replace(-1., np.NaN)        
     gps.index = pd.to_datetime(gps['t'], unit='s')
-    gps = gps[~gps.index.duplicated()]  # drop duplicated index
-    gps.drop('t', axis=1)
-
+    gps = gps[~gps.index.duplicated()]  # drop duplicated index  
+    
     return imu, gps
-    
-    
 
-    
-    
-    
     
     
     

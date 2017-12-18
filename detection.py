@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+ #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Sat Sep  9 13:02:27 2017
@@ -27,15 +27,14 @@ def event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate):
     dataLen = rot_z.shape[0]
     dataPoints = 20 #The number of data points to detect an event
     scanStep = int(samp_rate//10) #1/10 of a second    
-    rotz_threshold = 0.05
+    rotz_threshold = 0.03
     
     #Create empty data frame to store event data (RTT, LTT, LCR, LCL)
     df_event = pd.DataFrame(np.nan, index=np.arange(10000), columns=['type','prob','d',\
                             's_utc','e_utc','event_acc','s_spd','e_spd','s_crs','e_crs',\
                             's_lat','e_lat','s_long','e_long','s_alt','e_alt'])  
     
-    event_no = 1
-           
+    event_no = 1           
     #TOP LOOP:
     #Loop through event type (RTT, LTT, LCR, LCL)
     event_max_prob = np.zeros(4)               
@@ -55,7 +54,7 @@ def event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate):
         
         #MIDDLE Loop:
         #Loop through different scanning window sizes to capture the space for event patterns
-        #Step size is used to define the length of scanning windows (2 indicates 1 seconds; 4 indicates 2 seconds; ... 30 indicates 15 seconds) 
+        #Step size is used to define the length of scanning windows 
         for stepSize in np.linspace(beg_window, end_window, num=num_of_window):
         
             windowSize = dataPoints*stepSize.astype(int)
@@ -82,7 +81,7 @@ def event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate):
             for i in range(0, dataLen-windowSize, scanStep):
             
                 #Create an empty array to hold independent variables
-                dataVar = np.zeros(dataPoints*3+1)
+                dataVar = np.empty(dataPoints*3+1)
                 dataVar[0] = 1.0
             
                 #Extract values of key data points for a window segment
@@ -96,9 +95,9 @@ def event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate):
                 #Rotation w.r.t. z-axis must be close to zero to indicate the beginning and end of a event
                 rotz_beg = dataVar[1]
                 rotz_end = dataVar[20] 
-            
+                
                 #Calculate probability for data segment
-                event_prob = distributions.predict_prob_sigmoid(dataVar[0:2 * dataPoints + 1], evt_param[k])
+                event_prob = distributions.predict_prob_sigmoid(dataVar[0:2*dataPoints+1], evt_param[k])
                                                               
                 #Identify events with pre-defined criteria
                 if ((event_prob >= pro_threshold) and (np.abs(rotz_beg) <= rotz_threshold) and (np.abs(rotz_end) <= rotz_threshold)):
@@ -144,9 +143,17 @@ def event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate):
                         df_event.iloc[event_no-1, df_event.columns.get_loc('e_spd')] = end_spd
                         df_event.iloc[event_no-1, df_event.columns.get_loc('s_crs')] = beg_crs
                         df_event.iloc[event_no-1, df_event.columns.get_loc('e_crs')] = end_crs
-                        df_event.iloc[event_no-1, df_event.columns.get_loc('prob')] = event_max_prob  
+                        df_event.iloc[event_no-1, df_event.columns.get_loc('prob')] = event_max_prob 
+                        #print('time of event change')
+                        #print('beg_idx: %s; end_idx: %s; d_idx: %s; beg_utc: %s; end_utc: %s; d: %s' % (beg_idx, end_idx,(end_idx-beg_idx)/20,\
+                        #                                                              pd.to_datetime(beg_utc/1000000000, unit='s'),\
+                        #                                                              pd.to_datetime(end_utc/1000000000, unit='s'),\
+                        #                                                              (end_utc-beg_utc)/1000000000))
+                        #print(dataVar[1:dataPoints+1])
+                        #print(dataVar[dataPoints+1:2*dataPoints+1])
+                        #print(pd.to_datetime(dataVar[2*dataPoints+1:3*dataPoints+1]/1000000000,unit='s'))
                         event_no += 1 
-                    
+                                       
                         #Set values for a new event
                         event_max_prob = event_prob
                         beg_utc = dataVar[2*dataPoints+1]
@@ -188,7 +195,15 @@ def event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate):
                 df_event.iloc[event_no-1, df_event.columns.get_loc('e_spd')] = end_spd
                 df_event.iloc[event_no-1, df_event.columns.get_loc('s_crs')] = beg_crs
                 df_event.iloc[event_no-1, df_event.columns.get_loc('e_crs')] = end_crs
-                df_event.iloc[event_no-1, df_event.columns.get_loc('prob')] = event_max_prob    
+                df_event.iloc[event_no-1, df_event.columns.get_loc('prob')] = event_max_prob 
+                #print('step size change')
+                #print('beg_idx: %s; end_idx: %s; d_idx: %s; beg_utc: %s; end_utc: %s; d: %s' % (beg_idx, end_idx,(end_idx-beg_idx)/20,\
+                #                                                                      pd.to_datetime(beg_utc/1000000000, unit='s'),\
+                #                                                                      pd.to_datetime(end_utc/1000000000, unit='s'),\
+                #                                                                      (end_utc-beg_utc)/1000000000))
+                #print(dataVar[1:dataPoints+1])
+                #print(dataVar[dataPoints+1:2*dataPoints+1])
+                #print(pd.to_datetime(dataVar[2*dataPoints+1:3*dataPoints+1]/1000000000,unit='s'))
                 event_no += 1 
                                  
     df_event = df_event[df_event['prob'] > pro_threshold]               
@@ -198,6 +213,7 @@ def event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate):
     df_event['s_utc'] = pd.to_datetime(df_event['s_utc']/1000000000, unit='s')
     df_event['e_utc'] = pd.to_datetime(df_event['e_utc']/1000000000, unit='s')
     df_event['event_acc'] = (df_event['e_spd']-df_event['s_spd'])/df_event['d']/3.6/9.8
+    #print(df_event)
        
     return df_event
 
@@ -267,7 +283,9 @@ def event_summary(df_event):
         df_event = df_event.loc[df_event.reset_index().groupby(['overlap'])['prob'].idxmax()]
         df_event = df_event.reset_index(drop=True) 
         df_event = df_event.drop('overlap', axis=1)
-            
+        #print('Summary of evernts')
+        #print(df_event)
+        
     return df_event                
 
 
