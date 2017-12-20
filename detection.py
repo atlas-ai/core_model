@@ -11,7 +11,7 @@ import numpy as np
 import distributions
 
 
-def event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate):
+def event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate, turn_threshold, lane_change_threshold):
     """ detect movement events based on rotation rate of z-axis and changes in course
 
     :param rot_rate_z: imu rotation rate around z   
@@ -45,12 +45,12 @@ def event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate):
             beg_window = int(5*(samp_rate//dataPoints))
             end_window = int(15*(samp_rate//dataPoints))
             num_of_window = 11
-            pro_threshold = 0.8            
+            pro_threshold = turn_threshold            
         elif k==2 or k==3:
             beg_window = int(2*(samp_rate//dataPoints))
             end_window = int(8*(samp_rate//dataPoints))
             num_of_window = 7
-            pro_threshold = 0.6
+            pro_threshold = lane_change_threshold
         
         #MIDDLE Loop:
         #Loop through different scanning window sizes to capture the space for event patterns
