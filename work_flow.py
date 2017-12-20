@@ -39,13 +39,14 @@ def clean_data(filename, imu_sheet, gps_sheet):
 
 
 #Step 2: Conduct frame conversion process
-def convert_frame(imu, gps):
+def convert_frame(imu, gps, samp_rate):
     """ read cleaned imu and gps data and conduct frame converion
 
     :param imu: dataframe for imu
     :param gps: dataframe for gps
     :return: converted data in dataframe format
     """
+    imu = fin.sampling_control(imu, samp_rate)
     acc_imu = ffc.car_acceleration(imu['rot_rate_x'], imu['rot_rate_y'], imu['rot_rate_z'],\
                             imu['user_a_x'], imu['user_a_y'], imu['user_a_z'],\
                             imu['g_x'], imu['g_y'], imu['g_z'],\
@@ -72,7 +73,7 @@ def apply_filter(df_fc, n_smooth):
 
 
 #Step 4: Detect events (turns and lane changes) and sudden starts or brakes
-def event_detection_model(rot_z, lat, long, alt, crs, spd, samp_rate):    
+def event_detection_model(rot_z, lat, long, alt, crs, spd, samp_rate, turn_threshold, lane_change_threshold):    
     """ detect events (turns and lane changes)
     
     :param rot_rate_z: imu rotation rate around z   
@@ -85,7 +86,7 @@ def event_detection_model(rot_z, lat, long, alt, crs, spd, samp_rate):
     :return: detected events stored in a summary dataframe
     """
     evt_param = rdp.read_evt_param("detection_coefficients.csv")  
-    df_event = fdet.event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate)    
+    df_event = fdet.event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate, turn_threshold, lane_change_threshold)    
     df_evt_sum = fdet.event_summary(df_event)       
     return df_evt_sum
 
@@ -150,7 +151,7 @@ def evaluation_summary(user_id, df_evt_eva, df_acc_eva, spd, acc_x_gps, samp_rat
 
 
 #Execute main algorithms
-def execute_algorithm(imu, gps, base_id, samp_rate, n_smooth, z_threshold):
+def execute_algorithm(imu, gps, base_id, samp_rate, n_smooth, z_threshold, turn_threshold, lane_change_threshold):
     """ execute main algorithms 
     
     :param imu: imu data
@@ -161,9 +162,9 @@ def execute_algorithm(imu, gps, base_id, samp_rate, n_smooth, z_threshold):
     :param z_threshold: threshold of z-score that acceleration breaches
     :return : result table in dataframe format
     """    
-    df_fc = convert_frame(imu, gps)
+    df_fc = convert_frame(imu, gps, samp_rate)
     acc_x, acc_y, rot_z, lat, long, alt, crs, spd, acc_x_gps, acc_y_gps = apply_filter(df_fc, n_smooth)    
-    df_evt = event_detection_model(rot_z, lat, long, alt, crs, spd, samp_rate)
+    df_evt = event_detection_model(rot_z, lat, long, alt, crs, spd, samp_rate, turn_threshold, lane_change_threshold)
     df_acc = acc_detection_model(acc_x, lat, long, alt, crs, spd, samp_rate, z_threshold)
     df_evt_eva = evt_evaluation_model(acc_x, acc_y, spd, df_evt, samp_rate)
     df_acc_eva = acc_evaluation_model(df_acc, z_threshold)
@@ -233,7 +234,8 @@ def work_flow_with_loop(file_num):
         imu_segment = imu.iloc[((beg_rec-1)+i*4500):(end_rec+i*4500)]
     
         print('Event Detection & Evaluation Loop %s' % (i+1))
-        df_segment = execute_algorithm(imu_segment, gps, base_id, samp_rate=100, n_smooth=100, z_threshold=6)
+        df_segment = execute_algorithm(imu_segment, gps, base_id, samp_rate=100, n_smooth=100,\
+                                       z_threshold=6, turn_threshold=0.8, lane_change_threshold=0.6)
         df_db = df_db.append(df_segment)
         df_db = df_db.reset_index(drop=True)
         print('Loop %s Time: %s seconds' % ((i+1),round(timeit.default_timer()-pre_time,2)))

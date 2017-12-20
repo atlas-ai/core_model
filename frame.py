@@ -46,19 +46,7 @@ def car_acceleration(rot_rate_x, rot_rate_y, rot_rate_z,
     :return: 
     """
     #Interpolation of all data in case of no entry
-    i = rot_rate_x.index
-    rot_rate_x = interpolation.interpolate_to_index(rot_rate_x, i, method='time')
-    rot_rate_y = interpolation.interpolate_to_index(rot_rate_y, i, method='time')
-    rot_rate_z = interpolation.interpolate_to_index(rot_rate_z, i, method='time')
-    user_a_x = interpolation.interpolate_to_index(user_a_x, i, method='time')
-    user_a_y = interpolation.interpolate_to_index(user_a_y, i, method='time')
-    user_a_z = interpolation.interpolate_to_index(user_a_z, i, method='time')
-    g_x = interpolation.interpolate_to_index(g_x, i, method='time')
-    g_y = interpolation.interpolate_to_index(g_y, i, method='time')
-    g_z = interpolation.interpolate_to_index(g_z, i, method='time')
-    m_x = interpolation.interpolate_to_index(m_x, i, method='time')
-    m_y = interpolation.interpolate_to_index(m_y, i, method='time')
-    m_z = interpolation.interpolate_to_index(m_z, i, method='time')    
+    i = rot_rate_x.index   
     course = interpolation.smooth_angle(course)
     course_imu = interpolation.interpolate_to_index(course, i, method='time') 
     lat_imu = interpolation.interpolate_to_index(lat, i, method='time')
