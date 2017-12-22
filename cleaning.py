@@ -23,21 +23,23 @@ def gps_data(df):
     df = df.sort_values(by=['t'])
     df = df.reset_index(drop=True)
     
-    df['lat'] = df['lat'].replace('(null)', np.NaN)
-    df['lat'] = df['lat'].replace(-1., np.NaN)
+    df = df.fillna(value=np.NaN)
     
-    df['long'] = df['long'].replace('(null)', np.NaN)
-    df['long'] = df['long'].replace(-1., np.NaN)
+    df['lat'] = df['lat'].replace('null', np.NaN)
+    df['lat'] = df['lat'].replace('', np.NaN)
     
-    df['alt'] = df['alt'].replace('(null)', np.NaN)
-    df['alt'] = df['alt'].replace(-1., np.NaN)
+    df['long'] = df['long'].replace('null', np.NaN)
+    df['long'] = df['long'].replace('', np.NaN)
     
-    df['course'] = df['course'].replace('(null)', np.NaN)
-    df['course'] = df['course'].replace(-1., np.NaN)
+    df['alt'] = df['alt'].replace('null', np.NaN)
+    df['alt'] = df['alt'].replace('', np.NaN)
+    
+    df['course'] = df['course'].replace('null', np.NaN)
+    df['course'] = df['course'].replace('', np.NaN)
     df['course'] = np.radians(df['course'])
     
-    df['speed'] = df['speed'].replace('(null)', np.NaN)
-    df['speed'] = df['speed'].replace(-1., np.NaN)
+    df['speed'] = df['speed'].replace('null', np.NaN)
+    df['speed'] = df['speed'].replace('', np.NaN)
         
     df.index = pd.to_datetime(df['t'], unit='s')
     df = df[~df.index.duplicated()]  # drop duplicated index    

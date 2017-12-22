@@ -268,8 +268,8 @@ def read_new_data(filename, track_id):
     imu = imu[~imu.index.duplicated()]
     
     gps = df[['t','lat','long','alt','speed','course']]
-    gps = df.sort_values(by=['t'])
-    gps = df.reset_index(drop=True)    
+    gps = gps.sort_values(by=['t'])
+    gps = gps.reset_index(drop=True)    
     gps['lat'] = gps['lat'].replace('(null)', np.NaN)
     gps['lat'] = gps['lat'].replace(-1., np.NaN)    
     gps['long'] = gps['long'].replace('(null)', np.NaN)
