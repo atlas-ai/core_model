@@ -75,20 +75,22 @@ def sampling_control(imu, samp_rate):
     imu_infill = pd.DataFrame(np.nan, index=np.arange(samp_rate*10800), columns=imu_columns_conversion)
     imu_infill = imu_infill.rename(columns=imu_columns_conversion)
     
+    sT = imu['t']-imu['t'].diff()
+    interval =  imu['t'].diff()
+    n = round(interval/(1/samp_rate),0).where(interval>1/samp_rate*3/2)
+    dT = interval/n
+    df_T = pd.concat([sT.rename('sT'),interval.rename('interval'),n.rename('n'),dT.rename('dT')],axis=1)
+    df_T = df_T.dropna(axis=0,how='any')
+    
     recNo = 0
-    imuLen=imu.shape[0]
-    for i in range(1, imuLen):
-        interval = imu.index[i]-imu.index[i-1]
-        if interval.total_seconds() > 1/samp_rate*(3/2):                        
-            n = int(round(interval.total_seconds()/(1/samp_rate),0))
-            dT = interval/n
-            imu_infill.iloc[recNo, imu_infill.columns.get_loc('t')] = imu.index[i-1]
-            for j in range(1,n):
-                imu_infill.iloc[recNo+j, imu_infill.columns.get_loc('t')] = imu_infill['t'][recNo+j-1]+dT
-            recNo = recNo + n
-            
+    imuLen = df_T.shape[0]
+    for i in range(imuLen):
+        for j in range(int(df_T['n'][i])-1):
+            imu_infill.iloc[recNo, imu_infill.columns.get_loc('t')] = df_T['sT'][i]+(j+1)*df_T['dT'][i]
+            recNo = recNo + 1
+        
     imu_infill = imu_infill.dropna(how='all')
-    imu_infill = imu_infill.set_index('t')
+    imu_infill.index = pd.to_datetime(imu_infill['t'], unit='s')
     imu = imu.append(imu_infill)    
     imu = imu.sort_index()
     imu = imu[~imu.index.duplicated()]

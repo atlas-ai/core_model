@@ -254,48 +254,59 @@ def work_flow_with_loop(file_num):
 ##########################################################
 ####         Read Data Extrated from the Server        ###
 ##########################################################
-
-def read_new_data(filename, track_id):
     
-    df = pd.read_csv(filename)
-    df = df[df['track_uuid']==track_id]
+def read_new_data(file_name, file_type, samp_rate):
     
-    imu = df[['t','att_pitch','att_roll','att_yaw','rot_rate_x','rot_rate_y','rot_rate_z','g_x','g_y','g_z',\
-                'user_a_x','user_a_y','user_a_z','m_x','m_y','m_z']]
-    imu = imu.sort_values(by=['t'])
-    imu = imu.reset_index(drop=True)       
-    imu.index = pd.to_datetime(imu['t'], unit='s')
-    imu = imu[~imu.index.duplicated()]
+    if file_type=='csv':
+        
+        file = "../core_model/test/test_data/" + file_name
+        res = pd.read_csv(file, sep=';') 
+        
+        imu = res[['t','att_pitch','att_roll','att_yaw','rot_rate_x','rot_rate_y','rot_rate_z',\
+                  'g_x','g_y','g_z','user_a_x','user_a_y','user_a_z','m_x','m_y','m_z']].copy()
+        imu = imu.sort_values(by=['t'])
+        imu = imu.reset_index(drop=True)       
+        imu.index = pd.to_datetime(imu['t'], unit='s')
+        imu = imu[~imu.index.duplicated()]
+        
+        gps = res[['t','lat','long','alt','speed','course']].copy()
+        gps['course'] = np.radians(gps['course'])
+        gps = gps.sort_values(by=['t'])
+        gps = gps.reset_index(drop=True)  
+        gps.index = pd.to_datetime(gps['t'], unit='s')
+        gps = gps[~gps.index.duplicated()]
+                
+    elif file_type=='xlsx':
+        
+        file = "../data/Test Data/20171229/" + file_name
+        res = pd.read_excel(file,sheetname=['GPS','IMU'])
+        gps = fin.gps_data(res['GPS'])
+        imu = fin.imu_data(res['IMU'])
     
-    gps = df[['t','lat','long','alt','speed','course']]
-    gps = gps.sort_values(by=['t'])
-    gps = gps.reset_index(drop=True)    
-    gps['lat'] = gps['lat'].replace('(null)', np.NaN)
-    gps['lat'] = gps['lat'].replace(-1., np.NaN)    
-    gps['long'] = gps['long'].replace('(null)', np.NaN)
-    gps['long'] = gps['long'].replace(-1., np.NaN)    
-    gps['alt'] = gps['alt'].replace('(null)', np.NaN)
-    gps['alt'] = gps['alt'].replace(-1., np.NaN)    
-    gps['course'] = gps['course'].replace('(null)', np.NaN)
-    gps['course'] = gps['course'].replace(-1., np.NaN)
-    gps['course'] = np.radians(gps['course'])    
-    gps['speed'] = gps['speed'].replace('(null)', np.NaN)
-    gps['speed'] = gps['speed'].replace(-1., np.NaN)        
-    gps.index = pd.to_datetime(gps['t'], unit='s')
-    gps = gps[~gps.index.duplicated()]  # drop duplicated index  
+        
+    start_time = imu['t'][0]
+    end_time = imu['t'][imu.shape[0]-1]
+    jt_imu_t = (end_time-start_time)/60
+    jt_imu_rec = imu.shape[0]/samp_rate/60
+    print('IMU Timestamp Check:')    
+    print('Estimated Journey Time from Beginning and Ending IMU Timestamps: %s minutes' %\
+          (round(jt_imu_t,2))) 
+    print('Estmated Journey Time from Number of IMU Data Entries and Sampling Rate: %s minutes' %\
+          round(jt_imu_rec,2))
+    
+    gps = gps[~gps.isin(['NaN']).any(axis=1)]  
+    gps = gps[~gps.isin([0.0]).any(axis=1)]
+    start_gps = gps['t'][0]
+    end_gps = gps['t'][gps.shape[0]-1]
+    jt_gps_t = (end_gps-start_gps)/60
+    jt_gps_rec = gps.shape[0]/60
+    print('GPS Timestamp Check:')
+    print('Estimated Journey Time from Beginning and Ending GPS Timestamps: %s minutes' %\
+          (round(jt_gps_t,2))) 
+    print('Estmated Journey Time from Number of GPS Data Entries: %s minutes' %\
+          round(jt_gps_rec,2))
     
     return imu, gps
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     
     
     
