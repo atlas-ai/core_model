@@ -43,8 +43,8 @@ def event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate, turn_
         #Initialise scan parameters and probability threshold
         if k==0 or k==1:
             beg_window = int(5*(samp_rate//dataPoints))
-            end_window = int(15*(samp_rate//dataPoints))
-            num_of_window = 11
+            end_window = int(18*(samp_rate//dataPoints))
+            num_of_window = 14
             pro_threshold = turn_threshold            
         elif k==2 or k==3:
             beg_window = int(2*(samp_rate//dataPoints))
