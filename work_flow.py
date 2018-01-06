@@ -39,18 +39,20 @@ def clean_data(filename, imu_sheet, gps_sheet):
 
 
 #Step 2: Conduct frame conversion process
-def convert_frame(imu, gps, samp_rate):
+def convert_frame(imu, gps, samp_rate, device_id):
     """ read cleaned imu and gps data and conduct frame converion
 
     :param imu: dataframe for imu
     :param gps: dataframe for gps
     :return: converted data in dataframe format
     """
-    imu = fin.sampling_control(imu, samp_rate)
-    acc_imu = ffc.car_acceleration(imu['rot_rate_x'], imu['rot_rate_y'], imu['rot_rate_z'],\
-                            imu['user_a_x'], imu['user_a_y'], imu['user_a_z'],\
-                            imu['g_x'], imu['g_y'], imu['g_z'],\
-                            imu['m_x'], imu['m_y'], imu['m_z'],\
+    imu_samp = fin.sampling_control(imu, samp_rate)
+    cali_param = rdp.read_cali_matrix('calibration_matrix.csv', device_id)
+    imu_cal = fin.apply_calibration(imu_samp, cali_param)
+    acc_imu = ffc.car_acceleration(imu_cal['rot_rate_x'], imu_cal['rot_rate_y'], imu_cal['rot_rate_z'],\
+                            imu_cal['user_a_x'], imu_cal['user_a_y'], imu_cal['user_a_z'],\
+                            imu_cal['g_x'], imu_cal['g_y'], imu_cal['g_z'],\
+                            imu_cal['m_x'], imu_cal['m_y'], imu_cal['m_z'],\
                             gps['lat'], gps['long'], gps['alt'], gps['course'], gps['speed'])  
     acc_imu = acc_imu[~acc_imu.isin(['NaN']).any(axis=1)]    
     acc_gps = ffc.car_acceleration_from_gps(acc_imu['course'], acc_imu['speed'])
@@ -162,13 +164,16 @@ def execute_algorithm(imu, gps, base_id, samp_rate, n_smooth, z_threshold, turn_
     :param z_threshold: threshold of z-score that acceleration breaches
     :return : result table in dataframe format
     """    
-    df_fc = convert_frame(imu, gps, samp_rate)
+    start = timeit.default_timer()
+    df_fc = convert_frame(imu, gps, samp_rate, device_id='iPad-001')
     acc_x, acc_y, rot_z, lat, long, alt, crs, spd, acc_x_gps, acc_y_gps = apply_filter(df_fc, n_smooth)    
     df_evt = event_detection_model(rot_z, lat, long, alt, crs, spd, samp_rate, turn_threshold, lane_change_threshold)
     df_acc = acc_detection_model(acc_x, lat, long, alt, crs, spd, samp_rate, z_threshold)
     df_evt_eva = evt_evaluation_model(acc_x, acc_y, spd, df_evt, samp_rate)
     df_acc_eva = acc_evaluation_model(df_acc, z_threshold)
     df_sum = evaluation_summary(base_id, df_evt_eva, df_acc_eva, spd, acc_x_gps, samp_rate)  
+    stop = timeit.default_timer()
+    print ("Total Run Time: %s seconds \n" % round((stop - start),2))
     return df_sum
 
 #Clean up results table to remove duplicates

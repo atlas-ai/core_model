@@ -72,8 +72,9 @@ def sampling_control(imu, samp_rate):
     :param samp_rate: sample rate 
     :return: dataframe with infills to ensure constant sampling rate
     """
-    imu_infill = pd.DataFrame(np.nan, index=np.arange(samp_rate*10800), columns=imu_columns_conversion)
-    imu_infill = imu_infill.rename(columns=imu_columns_conversion)
+    imu_infill = pd.DataFrame(np.nan, index=np.arange(imu.shape[0]*0.20), columns=\
+                              ['t','att_pitch','att_roll','att_yaw','rot_rate_x','rot_rate_y','rot_rate_z',\
+                              'g_x','g_y','g_z','user_a_x','user_a_y','user_a_z','m_x','m_y','m_z'])
     
     sT = imu['t']-imu['t'].diff()
     interval =  imu['t'].diff()
@@ -117,7 +118,27 @@ def sampling_control(imu, samp_rate):
     return df
 
 
-
+def apply_calibration(imu, cali_param):
+    """ apply calibration process to IMU data 
+    
+    Rotation rates and user accelerations should be centred around zero
+    when the device is static.
+    Calibration process is applied to centre the values.
+    
+    :param imu: imu dataframe
+    :param cali_coef:  
+    :return: calibrated imu dataframe
+    """
+    df = imu.copy()
+    if cali_param.empty==False:
+        df['rot_rate_x']= imu['rot_rate_x'] - cali_param['rot_rate_x'][0]
+        df['rot_rate_y']= imu['rot_rate_y'] - cali_param['rot_rate_y'][0]
+        df['rot_rate_z']= imu['rot_rate_z'] - cali_param['rot_rate_z'][0]
+        df['user_a_x']= imu['user_a_x'] - cali_param['user_a_x'][0]
+        df['user_a_y']= imu['user_a_y'] - cali_param['user_a_y'][0]
+        df['user_a_z']= imu['user_a_z'] - cali_param['user_a_z'][0]
+    
+    return df
 
 
 

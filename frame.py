@@ -43,7 +43,7 @@ def car_acceleration(rot_rate_x, rot_rate_y, rot_rate_z,
     :param alt: gps altitude in metre
     :param course: gps course in radians
     :param speed: gps speed in m/s2
-    :return: 
+    :return: all information in the car frame
     """
     #Interpolation of all data in case of no entry
     i = rot_rate_x.index   

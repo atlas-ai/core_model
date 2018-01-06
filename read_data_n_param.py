@@ -73,5 +73,16 @@ def read_eva_param(csv_file):
     eva_param = pd.read_csv(csv_file, index_col=0)
     return eva_param
 
-
+def read_cali_matrix(csv_file, device_id):
+    """ read calibration matrix file
+    
+    :param csv_file: input parameter file in .csv format
+    :param device_id: device id
+    :return : parameters in dataframe ormat
+    """
+    df = pd.read_csv(csv_file)
+    cali_param = df[df['device_id']==device_id]
+    return cali_param
+    
+    
  

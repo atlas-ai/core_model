@@ -258,7 +258,7 @@ def eva_sum(user_id, df_evt_eva, df_acc_eva):
         df_summary.iloc[rec_num, df_summary.columns.get_loc('type')] = df_evt_eva['type'][i]
         df_summary.iloc[rec_num, df_summary.columns.get_loc('prob')] = df_evt_eva['prob'][i]
         df_summary.iloc[rec_num, df_summary.columns.get_loc('score')] = df_evt_eva['score'][i]
-        df_summary.iloc[rec_num, df_summary.columns.get_loc('d')] = (df_evt_eva['e_utc'][i]-df_evt_eva['s_utc'][i]).total_seconds()
+        df_summary.iloc[rec_num, df_summary.columns.get_loc('d')] = (df_evt_eva['e_utc'][i]-df_evt_eva['s_utc'][i])/np.timedelta64(1, 's')
         df_summary.iloc[rec_num, df_summary.columns.get_loc('s_utc')] = df_evt_eva['s_utc'][i]
         df_summary.iloc[rec_num, df_summary.columns.get_loc('e_utc')] = df_evt_eva['e_utc'][i]
         df_summary.iloc[rec_num, df_summary.columns.get_loc('event_acc')] = df_evt_eva['event_acc'][i]
@@ -288,7 +288,7 @@ def eva_sum(user_id, df_evt_eva, df_acc_eva):
         df_summary.iloc[rec_num, df_summary.columns.get_loc('type')] = df_acc_eva['type'][i]
         df_summary.iloc[rec_num, df_summary.columns.get_loc('prob')] = df_acc_eva['prob'][i]
         df_summary.iloc[rec_num, df_summary.columns.get_loc('score')] = df_acc_eva['score'][i]
-        df_summary.iloc[rec_num, df_summary.columns.get_loc('d')] = (df_acc_eva['e_utc'][i]-df_acc_eva['s_utc'][i]).total_seconds()
+        df_summary.iloc[rec_num, df_summary.columns.get_loc('d')] = (df_acc_eva['e_utc'][i]-df_acc_eva['s_utc'][i])/np.timedelta64(1, 's')
         df_summary.iloc[rec_num, df_summary.columns.get_loc('s_utc')] = df_acc_eva['s_utc'][i]
         df_summary.iloc[rec_num, df_summary.columns.get_loc('e_utc')] = df_acc_eva['e_utc'][i]
         df_summary.iloc[rec_num, df_summary.columns.get_loc('event_acc')] = df_acc_eva['event_acc'][i]
