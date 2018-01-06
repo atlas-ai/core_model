@@ -309,8 +309,8 @@ def excess_acc_detection(acc_x, lat, long, alt, crs, spd, acc_param, samp_rate, 
                             'duplicate'])
 
     acc_num = 0
-    max_acc = 0
-    max_dec = 0
+    max_acc = 0.0
+    max_dec = 0.0
               
     dataLen = len(acc_x)
     scanStep = int(samp_rate//10) #1/10 of a second  
@@ -320,7 +320,7 @@ def excess_acc_detection(acc_x, lat, long, alt, crs, spd, acc_param, samp_rate, 
         if acc_x[i] > (acc_param['acc_ave'][0]+z_threshold*np.sqrt(acc_param['acc_var'][0])):
             if (acc_x[i]>=max_acc) and (acc_x[i]>=acc_x[i-1]):
                 max_acc=acc_x[i]
-                max_utc=acc_x.index.values[i] 
+                max_utc=acc_x.index[i] 
             elif (acc_x[i]<max_acc) and (acc_x[i]<acc_x[i-1]):
                 df_acc_sum.iloc[acc_num, df_acc_sum.columns.get_loc('type')] = 'EXA'
                 df_acc_sum.iloc[acc_num, df_acc_sum.columns.get_loc('e_utc')] = max_utc
@@ -332,7 +332,7 @@ def excess_acc_detection(acc_x, lat, long, alt, crs, spd, acc_param, samp_rate, 
         elif acc_x[i] < (acc_param['dec_ave'][0]-z_threshold*np.sqrt(acc_param['dec_var'][0])):
             if (acc_x[i]<=max_dec) and (acc_x[i]<=acc_x[i-1]):
                 max_dec=acc_x[i]
-                max_utc=acc_x.index.values[i] 
+                max_utc=acc_x.index[i] 
             elif (acc_x[i]>max_dec) and (acc_x[i]>acc_x[i-1]):
                 df_acc_sum.iloc[acc_num, df_acc_sum.columns.get_loc('type')] = 'EXD'
                 df_acc_sum.iloc[acc_num, df_acc_sum.columns.get_loc('e_utc')] = max_utc
@@ -381,13 +381,13 @@ def excess_acc_detection(acc_x, lat, long, alt, crs, spd, acc_param, samp_rate, 
         for i in range(accLen):
             idx = acc_x.index.searchsorted(df_acc_sum['e_utc'][i]) 
             if (idx>(t_shift-1)) and ((idx+t_shift)<len(acc_x)):
-                s_utc = acc_x.index.values[idx-t_shift]
+                s_utc = acc_x.index[idx-t_shift]
                 s_lat = lat[idx-t_shift]
                 s_long = long[idx-t_shift]
                 s_alt = alt[idx-t_shift]
                 s_spd = spd[idx-t_shift]
                 s_crs = crs[idx-t_shift]
-                e_utc = acc_x.index.values[idx+t_shift]
+                e_utc = acc_x.index[idx+t_shift]
                 e_lat = lat[idx+t_shift]
                 e_long = long[idx+t_shift]
                 e_alt = alt[idx+t_shift]
@@ -395,7 +395,7 @@ def excess_acc_detection(acc_x, lat, long, alt, crs, spd, acc_param, samp_rate, 
                 e_crs = crs[idx+t_shift]
                 for j in range (idx, (idx-t_shift), -1):
                     if (acc_x[j]<0.01) and (acc_x[j]>-0.01):
-                        s_utc = acc_x.index.values[j]
+                        s_utc = acc_x.index[j]
                         s_lat = lat[j]
                         s_long = long[j]
                         s_alt = alt[j]
@@ -404,7 +404,7 @@ def excess_acc_detection(acc_x, lat, long, alt, crs, spd, acc_param, samp_rate, 
                         break
                 for j in range (idx, (idx+t_shift), 1):
                     if (acc_x[j]<0.01) and (acc_x[j]>-0.01):
-                        e_utc = acc_x.index.values[j]
+                        e_utc = acc_x.index[j]
                         e_lat = lat[j]
                         e_long = long[j]
                         e_alt = alt[j]
