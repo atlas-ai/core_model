@@ -5,7 +5,7 @@ import pandas as pd
 import cleaning as fin
 
 from enum import Enum
-from multiprocessing import Process
+from multiprocessing.dummy import Process
 from sqlalchemy import create_engine
 from pipeline_processor import replay
 from work_flow import execute_algorithm, clean_results
@@ -33,6 +33,9 @@ class Worker(Process):
         print('Worker started')
 
         for data in iter(self.queue.get, None):
+            # XXX
+            import ipdb;
+            ipdb.set_trace()
             data = json.loads(data)
             payload_data = data['payload']['data']
 

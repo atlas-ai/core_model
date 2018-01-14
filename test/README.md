@@ -77,3 +77,8 @@ COPY (
 ```
 Now the data will be downloaded into test/test_data/track_data.csv
 
+# AUTOMATIC TESTING
+
+```
+py.test
+```

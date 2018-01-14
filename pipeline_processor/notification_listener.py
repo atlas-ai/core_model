@@ -24,7 +24,8 @@ if __name__ == '__main__':
 
     while True:
         if select.select([conn], [], [], 5) == ([], [], []):
-            print("Timeout")
+            # print("Timeout")
+            pass
         else:
             conn.poll()
             while conn.notifies:
