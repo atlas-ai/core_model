@@ -27,19 +27,24 @@ def gps_data(df):
     
     df['lat'] = df['lat'].replace('null', np.NaN)
     df['lat'] = df['lat'].replace('', np.NaN)
+    df['lat'] = df['lat'].replace(-1., np.NaN)
     
     df['long'] = df['long'].replace('null', np.NaN)
     df['long'] = df['long'].replace('', np.NaN)
+    df['long'] = df['long'].replace(-1., np.NaN)
     
     df['alt'] = df['alt'].replace('null', np.NaN)
     df['alt'] = df['alt'].replace('', np.NaN)
+    df['alt'] = df['alt'].replace(-1., np.NaN)
     
     df['course'] = df['course'].replace('null', np.NaN)
     df['course'] = df['course'].replace('', np.NaN)
+    df['course'] = df['course'].replace(-1., np.NaN)
     df['course'] = np.radians(df['course'])
     
     df['speed'] = df['speed'].replace('null', np.NaN)
     df['speed'] = df['speed'].replace('', np.NaN)
+    df['speed'] = df['speed'].replace(-1., np.NaN)
         
     df.index = pd.to_datetime(df['t'], unit='s')
     df = df[~df.index.duplicated()]  # drop duplicated index    
@@ -134,9 +139,10 @@ def apply_calibration(imu, cali_param):
         df['rot_rate_x']= imu['rot_rate_x'] - cali_param['rot_rate_x'][0]
         df['rot_rate_y']= imu['rot_rate_y'] - cali_param['rot_rate_y'][0]
         df['rot_rate_z']= imu['rot_rate_z'] - cali_param['rot_rate_z'][0]
-        df['user_a_x']= imu['user_a_x'] - cali_param['user_a_x'][0]
-        df['user_a_y']= imu['user_a_y'] - cali_param['user_a_y'][0]
-        df['user_a_z']= imu['user_a_z'] - cali_param['user_a_z'][0]
+        #Analysis shows that acceleration is not affected by drifts
+        #df['user_a_x']= imu['user_a_x'] - cali_param['user_a_x'][0]
+        #df['user_a_y']= imu['user_a_y'] - cali_param['user_a_y'][0]
+        #df['user_a_z']= imu['user_a_z'] - cali_param['user_a_z'][0]
     
     return df
 
