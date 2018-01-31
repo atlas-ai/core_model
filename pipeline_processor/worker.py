@@ -29,8 +29,11 @@ class Worker(Process):
         self.queue = queue
         self.engine = create_engine(settings.DB_CONNECTION_STRING)
 
+    def terminate(self):
+        print('\nWORKER TERMINATED\n')
+
     def run(self):
-        print('Worker started')
+        print('WORKER STARTED')
 
         for data in iter(self.queue.get, None):
             data = json.loads(data)
@@ -42,7 +45,7 @@ class Worker(Process):
                            engine=self.engine)
                 return
 
-            print('\nNEW WORKER LAUNCHED, TRACK_UUID', payload_data['track_uuid'])
+            print('NEW WORKER LAUNCHED, TRACK_UUID', payload_data['track_uuid'])
             print('TIMESTAMP FROM:', data['oldest_unprocessed_timestamp'], 'TO:', payload_data['t'], 'DIFF:',
                   (payload_data['t'] - data['oldest_unprocessed_timestamp']))
 
@@ -113,11 +116,11 @@ class Worker(Process):
 
             # Check if the data coming is a "track_finished" event and if so, call the track cleanup function
             if 'name' in payload_data and payload_data['name'] == Events.TRACK_FINISHED.value:
-                print('track_finished event received')
+                print('track_finished EVENT RECEIVED')
                 df_detected_events = get_detected_events_for_track(track_uuid=payload_data['track_uuid'],
                                                                    engine=self.engine)
                 df_cleaned_detected_events = clean_results(track_uuid=payload_data['track_uuid'],
                                                            df_detected_events=df_detected_events)
 
                 df_cleaned_detected_events.to_sql(name='cleaned_events', con=self.engine, if_exists='append', index=False)
-                print('CLEANED EVENTS SAVED')
+                print('CLEANED EVENTS SAVED, UUID: {0}'.format(payload_data['track_uuid']))

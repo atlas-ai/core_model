@@ -173,7 +173,7 @@ def execute_algorithm(imu, gps, base_id, samp_rate, n_smooth, z_threshold, turn_
     df_acc_eva = acc_evaluation_model(df_acc, z_threshold)
     df_sum = evaluation_summary(base_id, df_evt_eva, df_acc_eva, spd, acc_x_gps, samp_rate)  
     stop = timeit.default_timer()
-    print ("Total Run Time: %s seconds \n" % round((stop - start),2))
+    print ("Total Run Time: %s seconds " % round((stop - start),2))
     return df_sum
 
 #Clean up results table to remove duplicates

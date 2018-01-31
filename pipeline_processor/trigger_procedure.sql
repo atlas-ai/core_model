@@ -37,6 +37,15 @@ BEGIN
 
             -- Send notification to channel
             PERFORM pg_notify('notifications', notification::text);
+
+            -- Logging
+            IF (insert_row_timestamp - oldest_unprocessed_timestamp >= 45)
+            THEN
+                RAISE NOTICE 'ENOUGH UNPROCESSED MEASUREMENTS, NOTIFICATION SENT TO CHANNEL, UUID:%, FROM:%, TO:%', insert_row_track_uuid, oldest_unprocessed_timestamp, insert_row_timestamp;
+            ELSIF (NEW.data->'name') IS NOT NULL AND (NEW.data->>'name' = 'track_finished')
+            THEN
+                RAISE NOTICE 'TRACK FINISHED EVENT RECEIVED, NOTIFICATION SENT TO CHANNEL, UUID:%, FROM:%, TO:%', insert_row_track_uuid, oldest_unprocessed_timestamp, insert_row_timestamp;
+            END IF;
         END IF;
     -- Check for "replay" event
     ELSIF (NEW.data->'name') IS NOT NULL AND (NEW.data->>'name' = 'replay')
@@ -47,6 +56,9 @@ BEGIN
 
         -- Send notification to channel
         PERFORM pg_notify('notifications', notification::text);
+
+        -- Logging
+        RAISE NOTICE 'REPLAY EVENT RECEIVED, NOTIFICATION SENT TO CHANNEL, UUID:%, FROM:%, TO:%', insert_row_track_uuid, oldest_unprocessed_timestamp, insert_row_timestamp;
     END IF;
     RETURN NEW;
 END;
