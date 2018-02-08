@@ -433,6 +433,355 @@ def excess_acc_detection(acc_x, lat, long, alt, crs, spd, acc_param, samp_rate, 
     return df_acc_sum
 
 
+# Pre-screening functions
+
+def thresholding_algo(y, lag, threshold, influence, avg, std):
+    # Use fixed thresholds as boundaries to generate signals (initialise avg and std)
+    df = pd.DataFrame(np.nan, index=y.index, columns=['Signal', 'Filter_Mean', 'Filter_Std'])
+    signals = np.zeros(len(y))
+    filteredY = np.array(y)
+    avgFilter = [0] * len(y)
+    stdFilter = [0] * len(y)
+    avgFilter[lag - 1] = avg
+    stdFilter[lag - 1] = std
+    for i in range(lag, len(y)):
+     if abs(y[i] - avgFilter[i - 1]) > threshold * stdFilter[i - 1]:
+         if y[i] > avgFilter[i - 1]:
+             signals[i] = 1
+         else:
+             signals[i] = -1
+
+         filteredY[i] = influence * y[i] + (1 - influence) * filteredY[i - 1]
+         avgFilter[i] = (1 - influence) * avg + influence * np.mean(filteredY[(i - lag):i])
+         stdFilter[i] = (1 - influence) * std + influence * np.std(filteredY[(i - lag):i])
+     else:
+         signals[i] = 0
+         filteredY[i] = y[i]
+         avgFilter[i] = (1 - influence) * avg + influence * np.mean(filteredY[(i - lag):i])
+         stdFilter[i] = (1 - influence) * std + influence * np.std(filteredY[(i - lag):i])
+
+    df['Signal'] = signals
+    df['Filter_Mean'] = avgFilter
+    df['Filter_Std'] = stdFilter
+
+    return df
 
 
+def transformation(signals, samp_rate):
+    trans = pd.DataFrame(np.nan, index=np.arange(1000), columns=['s_time', 'e_time', 'dur', 'gap', 'turn_code'])
 
+    trans_sig = signals['Signal'] + 2 * signals['Signal'].diff()
+
+    idx = 0
+    pattern = np.zeros((2, 2))
+    sig_len = len(trans_sig)
+    for i in range(1, sig_len):
+     if (trans_sig[i] == 3.) or (trans_sig[i] == -3.):  # define starting time
+         pattern[0, 0] = i
+         pattern[1, 0] = trans_sig[i]
+     elif (trans_sig[i] == 2.) or (trans_sig[i] == -2.):  # define ending time
+         pattern[0, 1] = i
+         pattern[1, 1] = trans_sig[i]
+         # write dataframe of 'trans'
+         # create turn_code: right turn = 1; left turn = -1; lane change to right = 5; lane change to left = -5.
+         trans.iloc[idx, trans.columns.get_loc('turn_code')] = pattern[1].sum()
+         if (pattern[0, 0] - 3 * samp_rate) < 0:
+             trans.iloc[idx, trans.columns.get_loc('s_time')] = trans_sig.index[0]
+         else:
+             trans.iloc[idx, trans.columns.get_loc('s_time')] = trans_sig.index[int(pattern[0, 0] - 3 * samp_rate)]
+         if (pattern[0, 1] + 3 * samp_rate) > (sig_len - 1):
+             trans.iloc[idx, trans.columns.get_loc('e_time')] = trans_sig.index[int(sig_len - 1)]
+         else:
+             trans.iloc[idx, trans.columns.get_loc('e_time')] = trans_sig.index[int(pattern[0, 1] + 3 * samp_rate)]
+         # reset pattern
+         pattern = np.zeros((2, 2))
+         idx += 1
+    trans = trans.dropna(how='all')
+    trans['dur'] = (trans['e_time'] - trans['s_time']) / np.timedelta64(1, 's')
+    trans['gap'] = (trans['s_time'] - trans['e_time'].shift(1)) / np.timedelta64(1, 's')
+    trans.iloc[0, trans.columns.get_loc('gap')] = 0
+
+    return trans
+
+
+def segmentation(trans):
+    seg = pd.DataFrame(np.nan, index=np.arange(100), columns=['s_time', 'e_time', 'dur', 'seg_code'])
+    # seg_code: right turn = 1; left turn = 2; lane change (right) = 3; lane change (left) = 4; others = 5
+    idx = 0
+    seg.iloc[idx, seg.columns.get_loc('s_time')] = trans['s_time'][0]
+    seg.iloc[idx, seg.columns.get_loc('e_time')] = trans['e_time'][0]
+    if trans['turn_code'][0] == 1.:
+        seg.iloc[idx, seg.columns.get_loc('seg_code')] = 1.
+    elif trans['turn_code'][0] == -1.:
+        seg.iloc[idx, seg.columns.get_loc('seg_code')] = 2.
+    elif trans['turn_code'][0] == 5.:
+        seg.iloc[idx, seg.columns.get_loc('seg_code')] = 3.
+    elif trans['turn_code'][0] == -5.:
+        seg.iloc[idx, seg.columns.get_loc('seg_code')] = 4.
+    else:
+        seg.iloc[idx, seg.columns.get_loc('seg_code')] = 5.
+
+    trans_len = trans.shape[0]
+    for i in range(1, trans_len):
+        if trans['gap'][i] <= 0:
+            seg.iloc[idx, seg.columns.get_loc('e_time')] = trans['e_time'][i]
+            if (seg['seg_code'][idx] == 1.) and (trans['turn_code'][i] == 1.):
+                seg.iloc[idx, seg.columns.get_loc('seg_code')] = 1.
+            elif (seg['seg_code'][idx] == -1.) and (trans['turn_code'][i] == -1.):
+                seg.iloc[idx, seg.columns.get_loc('seg_code')] = 2.
+            elif (seg['seg_code'][idx] == 1.) and (trans['turn_code'][i] == -1.):
+                seg.iloc[idx, seg.columns.get_loc('seg_code')] = 3.
+            elif (seg['seg_code'][idx] == -1.) and (trans['turn_code'][i] == 1.):
+                seg.iloc[idx, seg.columns.get_loc('seg_code')] = 4.
+            else:
+                seg.iloc[idx, seg.columns.get_loc('seg_code')] = 5.
+        else:
+            idx += 1
+            seg.iloc[idx, seg.columns.get_loc('s_time')] = trans['s_time'][i]
+            seg.iloc[idx, seg.columns.get_loc('e_time')] = trans['e_time'][i]
+            if trans['turn_code'][i] == 1.:
+                seg.iloc[idx, seg.columns.get_loc('seg_code')] = 1.
+            elif trans['turn_code'][i] == -1.:
+                seg.iloc[idx, seg.columns.get_loc('seg_code')] = 2.
+            elif trans['turn_code'][i] == 5.:
+                seg.iloc[idx, seg.columns.get_loc('seg_code')] = 3.
+            elif trans['turn_code'][i] == -5.:
+                seg.iloc[idx, seg.columns.get_loc('seg_code')] = 4.
+            else:
+                seg.iloc[idx, seg.columns.get_loc('seg_code')] = 5.
+
+    seg = seg.dropna(how='all')
+    seg['dur'] = (seg['e_time'] - seg['s_time']) / np.timedelta64(1, 's')
+
+    return seg
+
+
+def detection_algo(rot_z, lat, long, alt, crs, spd, param, samp_rate, threshold, seg_code):
+    dataLen = rot_z.shape[0]
+    dataPoints = 20  # The number of data points to detect an event
+    scanStep = int(samp_rate // 10)  # 1/10 of a second
+    rotz_threshold = 0.03
+
+    # Create empty data frame to store event data (RTT, LTT, LCR, LCL)
+    df_event = pd.DataFrame(np.nan, index=np.arange(100), columns=['type', 'prob', 'd', \
+                                                                   's_utc', 'e_utc', 'event_acc', 's_spd', 'e_spd',
+                                                                   's_crs', 'e_crs', \
+                                                                   's_lat', 'e_lat', 's_long', 'e_long', 's_alt',
+                                                                   'e_alt'])
+    event_no = 1
+    pro_threshold = threshold
+
+    # Initialise scan parameters and probability threshold
+    if seg_code == 1 or seg_code == 2:
+        beg_window = int(5 * (samp_rate // dataPoints))
+        end_window = int(18 * (samp_rate // dataPoints))
+        num_of_window = 14
+    elif seg_code == 3 or seg_code == 4:
+        beg_window = int(2 * (samp_rate // dataPoints))
+        end_window = int(8 * (samp_rate // dataPoints))
+        num_of_window = 7
+
+    for stepSize in np.linspace(beg_window, end_window, num=num_of_window):
+
+        windowSize = dataPoints * stepSize.astype(int)
+        previous_event = windowSize
+        event_max_prob = 0.0
+        beg_idx = 0
+        end_idx = 0
+        beg_utc = 0.0
+        end_utc = 0.0
+        beg_lat = 0.0
+        end_lat = 0.0
+        beg_long = 0.0
+        end_long = 0.0
+        beg_alt = 0.0
+        end_alt = 0.0
+        beg_spd = 0.0
+        end_spd = 0.0
+        beg_crs = 0.0
+        end_crs = 0.0
+
+        for i in range(0, dataLen - windowSize, scanStep):
+
+            # Create an empty array to hold independent variables
+            dataVar = np.empty(dataPoints * 3 + 1)
+            dataVar[0] = 1.0
+
+            # Extract values of key data points for a window segment
+            for j in range(1, dataPoints + 1):
+                idx = (i + (j - 1) * stepSize).astype(int)
+                dataVar[j] = rot_z.iloc[idx]
+                dataVar[j + dataPoints] = crs.iloc[idx] - crs.iloc[idx - 1]
+                dataVar[j + 2 * dataPoints] = rot_z.index.values[idx]
+
+            # Rotation w.r.t. z-axis must be close to zero to indicate the beginning and end of a event
+            rotz_beg = dataVar[1]
+            rotz_end = dataVar[20]
+
+            # Calculate probability for data segment
+            event_prob = distributions.predict_prob_sigmoid(dataVar[0:2 * dataPoints + 1], param)
+
+            # Identify events with pre-defined criteria
+            if ((event_prob >= pro_threshold) and (np.abs(rotz_beg) <= rotz_threshold) and \
+                        (np.abs(rotz_end) <= rotz_threshold)):
+                # Check whether the detected event overlaps with previous event with the same duration
+                if i <= previous_event:
+                    # Loop to record maximum probability
+                    if event_prob >= event_max_prob:
+                        event_max_prob = event_prob
+                        beg_utc = dataVar[2 * dataPoints + 1]
+                        beg_idx = i
+                        beg_lat = lat.iloc[beg_idx]
+                        beg_long = long.iloc[beg_idx]
+                        beg_alt = alt.iloc[beg_idx]
+                        beg_spd = spd.iloc[beg_idx]
+                        beg_crs = crs.iloc[beg_idx]
+                        end_utc = dataVar[3 * dataPoints]
+                        end_idx = i + windowSize
+                        end_lat = lat.iloc[end_idx]
+                        end_long = long.iloc[end_idx]
+                        end_alt = alt.iloc[end_idx]
+                        end_spd = spd.iloc[end_idx]
+                        end_crs = crs.iloc[end_idx]
+                else:
+                    # Data entry when time of event changes
+                    if seg_code == 1:
+                        df_event.iloc[event_no - 1, df_event.columns.get_loc('type')] = 'RTT'
+                    elif seg_code == 2:
+                        df_event.iloc[event_no - 1, df_event.columns.get_loc('type')] = 'LTT'
+                    elif seg_code == 3:
+                        df_event.iloc[event_no - 1, df_event.columns.get_loc('type')] = 'LCR'
+                    elif seg_code == 4:
+                        df_event.iloc[event_no - 1, df_event.columns.get_loc('type')] = 'LCL'
+                    df_event.iloc[event_no - 1, df_event.columns.get_loc('s_utc')] = beg_utc
+                    df_event.iloc[event_no - 1, df_event.columns.get_loc('e_utc')] = end_utc
+                    df_event.iloc[event_no - 1, df_event.columns.get_loc('d')] = (end_utc - beg_utc)
+                    df_event.iloc[event_no - 1, df_event.columns.get_loc('s_lat')] = beg_lat
+                    df_event.iloc[event_no - 1, df_event.columns.get_loc('e_lat')] = end_lat
+                    df_event.iloc[event_no - 1, df_event.columns.get_loc('s_long')] = beg_long
+                    df_event.iloc[event_no - 1, df_event.columns.get_loc('e_long')] = end_long
+                    df_event.iloc[event_no - 1, df_event.columns.get_loc('s_alt')] = beg_alt
+                    df_event.iloc[event_no - 1, df_event.columns.get_loc('e_alt')] = end_alt
+                    df_event.iloc[event_no - 1, df_event.columns.get_loc('s_spd')] = beg_spd
+                    df_event.iloc[event_no - 1, df_event.columns.get_loc('e_spd')] = end_spd
+                    df_event.iloc[event_no - 1, df_event.columns.get_loc('s_crs')] = beg_crs
+                    df_event.iloc[event_no - 1, df_event.columns.get_loc('e_crs')] = end_crs
+                    df_event.iloc[event_no - 1, df_event.columns.get_loc('prob')] = event_max_prob
+                    event_no += 1
+
+                    # Set values for a new event
+                    event_max_prob = event_prob
+                    beg_utc = dataVar[2 * dataPoints + 1]
+                    beg_idx = i
+                    beg_lat = lat.iloc[beg_idx]
+                    beg_long = long.iloc[beg_idx]
+                    beg_alt = alt.iloc[beg_idx]
+                    beg_spd = spd.iloc[beg_idx]
+                    beg_crs = crs.iloc[beg_idx]
+                    end_utc = dataVar[3 * dataPoints]
+                    end_idx = i + windowSize
+                    end_lat = lat.iloc[end_idx]
+                    end_long = long.iloc[end_idx]
+                    end_alt = alt.iloc[end_idx]
+                    end_spd = spd.iloc[end_idx]
+                    end_crs = crs.iloc[end_idx]
+                    previous_event = i + windowSize
+
+        # Data entry when step size changes
+        if event_max_prob != 0.0:
+            if seg_code == 1:
+                df_event.iloc[event_no - 1, df_event.columns.get_loc('type')] = 'RTT'
+            elif seg_code == 2:
+                df_event.iloc[event_no - 1, df_event.columns.get_loc('type')] = 'LTT'
+            elif seg_code == 3:
+                df_event.iloc[event_no - 1, df_event.columns.get_loc('type')] = 'LCR'
+            elif seg_code == 4:
+                df_event.iloc[event_no - 1, df_event.columns.get_loc('type')] = 'LCL'
+            df_event.iloc[event_no - 1, df_event.columns.get_loc('s_utc')] = beg_utc
+            df_event.iloc[event_no - 1, df_event.columns.get_loc('e_utc')] = end_utc
+            df_event.iloc[event_no - 1, df_event.columns.get_loc('d')] = (end_utc - beg_utc)
+            df_event.iloc[event_no - 1, df_event.columns.get_loc('s_lat')] = beg_lat
+            df_event.iloc[event_no - 1, df_event.columns.get_loc('e_lat')] = end_lat
+            df_event.iloc[event_no - 1, df_event.columns.get_loc('s_long')] = beg_long
+            df_event.iloc[event_no - 1, df_event.columns.get_loc('e_long')] = end_long
+            df_event.iloc[event_no - 1, df_event.columns.get_loc('s_alt')] = beg_alt
+            df_event.iloc[event_no - 1, df_event.columns.get_loc('e_alt')] = end_alt
+            df_event.iloc[event_no - 1, df_event.columns.get_loc('s_spd')] = beg_spd
+            df_event.iloc[event_no - 1, df_event.columns.get_loc('e_spd')] = end_spd
+            df_event.iloc[event_no - 1, df_event.columns.get_loc('s_crs')] = beg_crs
+            df_event.iloc[event_no - 1, df_event.columns.get_loc('e_crs')] = end_crs
+            df_event.iloc[event_no - 1, df_event.columns.get_loc('prob')] = event_max_prob
+            event_no += 1
+
+    df_event = df_event[df_event['prob'] > pro_threshold]
+    df_event = df_event.sort_values(['type', 'e_utc', 'prob'], ascending=[True, True, False])
+    df_event = df_event.reset_index(drop=True)
+    df_event['d'] = df_event['d'] / 1000000000
+    df_event['s_utc'] = pd.to_datetime(df_event['s_utc'] / 1000000000, unit='s')
+    df_event['e_utc'] = pd.to_datetime(df_event['e_utc'] / 1000000000, unit='s')
+    df_event['event_acc'] = (df_event['e_spd'] - df_event['s_spd']) / df_event['d'] / 3.6 / 9.8
+
+    return df_event
+
+
+def evt_det_model(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate, turn_threshold, lane_change_threshold):
+    df_evt = pd.DataFrame(np.nan, index=np.arange(0), columns=['type', 'prob', 'd', \
+                                                               's_utc', 'e_utc', 'event_acc', 's_spd', 'e_spd',
+                                                               's_crs', 'e_crs', \
+                                                               's_lat', 'e_lat', 's_long', 'e_long', 's_alt', 'e_alt'])
+    # Step 1: Pre-screen to obtain signal segments
+    rot_z_avg = rot_z.where(np.abs(rot_z) <= 0.02).mean()
+    rot_z_std = rot_z.where(np.abs(rot_z) <= 0.02).std()
+    signals = thresholding_algo(rot_z, lag=5, threshold=6, influence=0.01, avg=rot_z_avg, std=rot_z_std)
+
+    # check if no events detected and return empty
+    if len(signals[signals['Signal'] != 0]) == 0:
+        return df_evt
+
+    trans = transformation(signals, samp_rate=50)
+    seg = segmentation(trans)
+    seg_no = seg.shape[0]
+
+    # Step 2: Run detection model
+
+    for i in range(seg_no):
+     st = seg['s_time'][i]
+     et = seg['e_time'][i]
+     sc = seg['seg_code'][i]
+
+     rot_z_seg = rot_z[st:et]
+     lat_seg = lat[st:et]
+     long_seg = long[st:et]
+     alt_seg = alt[st:et]
+     crs_seg = crs[st:et]
+     spd_seg = spd[st:et]
+
+     if sc == 1.:
+         df = detection_algo(rot_z_seg, lat_seg, long_seg, alt_seg, crs_seg, spd_seg, \
+                             evt_param[int(sc - 1)], samp_rate, threshold=turn_threshold, seg_code=sc)
+         df_evt = df_evt.append(df)
+     elif sc == 2.:
+         df = detection_algo(rot_z_seg, lat_seg, long_seg, alt_seg, crs_seg, spd_seg, \
+                             evt_param[int(sc - 1)], samp_rate, threshold=turn_threshold, seg_code=sc)
+         df_evt = df_evt.append(df)
+     elif sc == 3.:
+         df = detection_algo(rot_z_seg, lat_seg, long_seg, alt_seg, crs_seg, spd_seg, \
+                             evt_param[int(sc - 1)], samp_rate, threshold=lane_change_threshold, seg_code=sc)
+         df_evt = df_evt.append(df)
+     elif sc == 4.:
+         df = detection_algo(rot_z_seg, lat_seg, long_seg, alt_seg, crs_seg, spd_seg, \
+                             evt_param[int(sc - 1)], samp_rate, threshold=lane_change_threshold, seg_code=sc)
+         df_evt = df_evt.append(df)
+     elif sc == 5.:
+         for j in range(4):
+             if j == 0 or j == 1:
+                 evt_threshold = turn_threshold
+             elif j == 2 or j == 3:
+                 evt_threshold = lane_change_threshold
+             df = detection_algo(rot_z_seg, lat_seg, long_seg, alt_seg, crs_seg, spd_seg, \
+                                 evt_param[j], samp_rate, threshold=evt_threshold, seg_code=(j + 1))
+             df_evt = df_evt.append(df)
+
+    df_evt = df_evt.reset_index(drop=True)
+
+    return df_evt

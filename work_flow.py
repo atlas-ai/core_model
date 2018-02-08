@@ -88,7 +88,7 @@ def event_detection_model(rot_z, lat, long, alt, crs, spd, samp_rate, turn_thres
     :return: detected events stored in a summary dataframe
     """
     evt_param = rdp.read_evt_param("detection_coefficients.csv")  
-    df_event = fdet.event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate, turn_threshold, lane_change_threshold)    
+    df_event = fdet.evt_det_model(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate, turn_threshold, lane_change_threshold)
     df_evt_sum = fdet.event_summary(df_event)       
     return df_evt_sum
 
