@@ -59,8 +59,7 @@ def imu_data(df):
     """
     df = df.rename(columns=imu_columns_conversion)            
     df = df.sort_values(by=['t'])
-    df = df.reset_index(drop=True)   
-    
+    df = df.reset_index(drop=True)       
     df.index = pd.to_datetime(df['t'], unit='s')
     df = df[~df.index.duplicated()] # drop duplicated index
     return df
@@ -77,7 +76,7 @@ def sampling_control(imu, samp_rate):
     :param samp_rate: sample rate 
     :return: dataframe with infills to ensure constant sampling rate
     """
-    imu_infill = pd.DataFrame(np.nan, index=np.arange(imu.shape[0]*0.20), columns=\
+    imu_infill = pd.DataFrame(np.nan, index=np.arange(imu.shape[0]), columns=\
                               ['t','att_pitch','att_roll','att_yaw','rot_rate_x','rot_rate_y','rot_rate_z',\
                               'g_x','g_y','g_z','user_a_x','user_a_y','user_a_z','m_x','m_y','m_z'])
     
@@ -91,7 +90,7 @@ def sampling_control(imu, samp_rate):
     recNo = 0
     imuLen = df_T.shape[0]
     for i in range(imuLen):
-        for j in range(int(df_T['n'][i])-1):
+        for j in range(int(df_T['n'][i]-1)):
             imu_infill.iloc[recNo, imu_infill.columns.get_loc('t')] = df_T['sT'][i]+(j+1)*df_T['dT'][i]
             recNo = recNo + 1
         
