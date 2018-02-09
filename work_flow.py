@@ -46,7 +46,9 @@ def convert_frame(imu, gps, samp_rate, device_id):
     :param gps: dataframe for gps
     :return: converted data in dataframe format
     """
+    print ('Original Dataset Size: %s' % imu.shape[0])
     imu_samp = fin.sampling_control(imu, samp_rate)
+    print ('After Sampling Control: %s' % imu_samp.shape[0])
     cali_param = rdp.read_cali_matrix('calibration_matrix.csv', device_id)
     imu_cal = fin.apply_calibration(imu_samp, cali_param)
     acc_imu = ffc.car_acceleration(imu_cal['rot_rate_x'], imu_cal['rot_rate_y'], imu_cal['rot_rate_z'],\
@@ -54,7 +56,9 @@ def convert_frame(imu, gps, samp_rate, device_id):
                             imu_cal['g_x'], imu_cal['g_y'], imu_cal['g_z'],\
                             imu_cal['m_x'], imu_cal['m_y'], imu_cal['m_z'],\
                             gps['lat'], gps['long'], gps['alt'], gps['course'], gps['speed'])  
-    acc_imu = acc_imu[~acc_imu.isin(['NaN']).any(axis=1)]    
+    print ('After Conversion: %s' % acc_imu.shape[0])
+    acc_imu = acc_imu.dropna(how='all') 
+    print ('After Conversion Drop NA: %s' % acc_imu.shape[0])
     acc_gps = ffc.car_acceleration_from_gps(acc_imu['course'], acc_imu['speed'])
     df_fc = pd.concat([acc_imu, acc_gps],axis=1)   
     return df_fc
@@ -69,13 +73,13 @@ def apply_filter(df_fc, n_smooth):
     :return: series of processed accelerations, rotation rates, course and speed
     """
     df_smooth = df_fc.rolling(n_smooth).mean()
-    df_smooth = df_smooth[~df_smooth.isin(['NaN']).any(axis=1)]
+    df_smooth = df_smooth.dropna(how='all')
     acc_x, acc_y, rot_z, lat, long, alt, crs, spd, acc_x_gps, acc_y_gps = rdp.read_df(df_smooth)
     return acc_x, acc_y, rot_z, lat, long, alt, crs, spd, acc_x_gps, acc_y_gps
 
 
 #Step 4: Detect events (turns and lane changes) and sudden starts or brakes
-def event_detection_model(rot_z, lat, long, alt, crs, spd, samp_rate, turn_threshold, lane_change_threshold):    
+def evt_detection_model(rot_z, lat, long, alt, crs, spd, samp_rate, turn_threshold, lane_change_threshold):    
     """ detect events (turns and lane changes)
     
     :param rot_rate_z: imu rotation rate around z   
@@ -88,8 +92,8 @@ def event_detection_model(rot_z, lat, long, alt, crs, spd, samp_rate, turn_thres
     :return: detected events stored in a summary dataframe
     """
     evt_param = rdp.read_evt_param("detection_coefficients.csv")  
-    df_event = fdet.evt_det_model(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate, turn_threshold, lane_change_threshold)
-    df_evt_sum = fdet.event_summary(df_event)       
+    df_event = fdet.event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate, turn_threshold, lane_change_threshold)
+    df_evt_sum = fdet.remove_evt_duplicates(df_event)       
     return df_evt_sum
 
 def acc_detection_model(acc_x, lat, long, alt, crs, spd, samp_rate, z_threshold):
@@ -167,13 +171,13 @@ def execute_algorithm(imu, gps, base_id, samp_rate, n_smooth, z_threshold, turn_
     start = timeit.default_timer()
     df_fc = convert_frame(imu, gps, samp_rate, device_id='iPad-001')
     acc_x, acc_y, rot_z, lat, long, alt, crs, spd, acc_x_gps, acc_y_gps = apply_filter(df_fc, n_smooth)    
-    df_evt = event_detection_model(rot_z, lat, long, alt, crs, spd, samp_rate, turn_threshold, lane_change_threshold)
+    df_evt = evt_detection_model(rot_z, lat, long, alt, crs, spd, samp_rate, turn_threshold, lane_change_threshold)
     df_acc = acc_detection_model(acc_x, lat, long, alt, crs, spd, samp_rate, z_threshold)
     df_evt_eva = evt_evaluation_model(acc_x, acc_y, spd, df_evt, samp_rate)
     df_acc_eva = acc_evaluation_model(df_acc, z_threshold)
     df_sum = evaluation_summary(base_id, df_evt_eva, df_acc_eva, spd, acc_x_gps, samp_rate)  
     stop = timeit.default_timer()
-    print ("Total Run Time: %s seconds " % round((stop - start),2))
+    print ('Run Time: %s seconds ' % round((stop - start),2))
     return df_sum
 
 #Clean up results table to remove duplicates
@@ -192,7 +196,8 @@ def clean_results(track_uuid, df_detected_events):
 ####       Main Module - Simulate Loop of 60s Run      ###
 ##########################################################    
 
-def work_flow_with_loop(file_num):
+def work_flow_with_loop(imu, gps, base_id, samp_rate, n_smooth,\
+                        z_threshold, turn_threshold, lane_change_threshold):
     
     """ main module to detect, evaluate and summarise driving behaviour for a single file 
     
@@ -201,19 +206,6 @@ def work_flow_with_loop(file_num):
     """
     start = timeit.default_timer()
     pre_time = timeit.default_timer()
-    
-    folder = "/Users/Sean_Xin_Zhou/Documents/GitHub/data/Test Data/02 Data Checked/"
-    pattern = folder + '*_Checked.xlsx'
-    files = glob.glob(pattern)
-
-    filename = files[file_num]  
-    basename = os.path.splitext(os.path.basename(filename))[0]
-    base_id = basename.replace("_Checked","")
-    gps_sheet = "GPS"
-    imu_sheet = "IMU"
-    
-    imu, gps = clean_data(filename, imu_sheet, gps_sheet)
-    
     df_db = pd.DataFrame(np.nan, index=np.arange(0), columns=['id','type','prob','score','d','s_utc','e_utc',\
                        'event_acc','s_spd','e_spd','s_crs','e_crs','s_lat','e_lat','s_long','e_long','s_alt','e_alt',\
                        'sec1_s_spd','sec1_e_spd','sec1_spd_bin','sec1_acc_z','sec1_dec_z','sec1_lat_lt_z','sec1_lat_rt_z',\
@@ -227,31 +219,41 @@ def work_flow_with_loop(file_num):
                        'acc_x_gps_16','acc_x_gps_17','acc_x_gps_18','acc_x_gps_19','acc_x_gps_20'])  
     
     #Simulate reading patterns (Do calculation every 60 seconds, with 15 seconds overlapping data.)
-    beg_rec = 1
-    end_rec = 6000
-    tot_rep = (imu.shape[0]-6000)//4500+1
-    print('\n')
+    imu = fin.sampling_control(imu, samp_rate)
+    beg_rec = 0
+    end_rec = 60*samp_rate
+    tot_rep = (imu.shape[0]-60*samp_rate)//(45*samp_rate)+1   
     
-    for i in range(tot_rep):    
+    print('\n')
+    print('Event Detection & Evaluation Total Number of Loops: %s' % tot_rep)
+    
+    for i in range(tot_rep): 
+        
+        beg_rec = i*45*samp_rate
+        
         if i==(tot_rep-1):
             end_rec = imu.shape[0]-1
-    
-        imu_segment = imu.iloc[((beg_rec-1)+i*4500):(end_rec+i*4500)]
-    
+        else:
+            end_rec = 60*samp_rate+i*45*samp_rate
+
+        imu_segment = imu.iloc[beg_rec:end_rec]
+        print('\n')  
         print('Event Detection & Evaluation Loop %s' % (i+1))
-        df_segment = execute_algorithm(imu_segment, gps, base_id, samp_rate=100, n_smooth=100,\
-                                       z_threshold=6, turn_threshold=0.8, lane_change_threshold=0.6)
+        df_segment = execute_algorithm(imu_segment, gps, base_id, samp_rate, n_smooth,\
+                                       z_threshold, turn_threshold, lane_change_threshold)
         df_db = df_db.append(df_segment)
         df_db = df_db.reset_index(drop=True)
-        print('Loop %s Time: %s seconds' % ((i+1),round(timeit.default_timer()-pre_time,2)))
+        print('Loop %s Run Time: %s seconds' % ((i+1),round(timeit.default_timer()-pre_time,2)))
+        
         pre_time = timeit.default_timer()
         
     #Clean up process at the end of all runs
     df = clean_results(base_id, df_db)
     
     stop = timeit.default_timer()
-    print ("Done for user: %s" % base_id)
-    print ("Total Run Time: %s seconds \n" % round((stop - start),2))
+    print ('\n')
+    print ('Done for user: %s' % base_id)
+    print ('Total Run Time: %s seconds \n' % round((stop - start),2))
     
     return df
 

@@ -54,7 +54,7 @@ def remove_duplicates(user_id, df_sum):
     dfLen = df.shape[0]
     for i in range(1, dfLen):
         if df['type'][i]==df['type'][i-1]:
-            if np.abs((df['s_utc'][i]-df['s_utc'][i-1]).total_seconds())<=5:
+            if (np.abs((df['s_utc'][i]-df['s_utc'][i-1]).total_seconds())<=5) or (df['s_utc'][i]<=df['e_utc'][i-1]):
                 df.iloc[i, df.columns.get_loc('duplicate')] = 1    
     df = df[df['duplicate']!=1.0]
     df = df.drop('duplicate', axis=1)

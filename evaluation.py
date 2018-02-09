@@ -163,44 +163,49 @@ def event_eva(acc_x, acc_y, spd, df_evt, samp_rate):
                        'sec2_s_spd','sec2_e_spd','sec2_spd_bin','sec2_acc_z','sec2_dec_z','sec2_lat_lt_z','sec2_lat_rt_z',\
                        'sec3_s_spd','sec3_e_spd','sec3_spd_bin','sec3_acc_z','sec3_dec_z','sec3_lat_lt_z','sec3_lat_rt_z'])  
 
-    evt_num = df_evt.shape[0]
-
-    for i in range(evt_num):    
-        sec_s_spd, sec_e_spd, spd_bin, acc_z, dec_z, lat_lt_z, lat_rt_z = \
-        get_event_zscore(df_evt['type'][i], df_evt['s_utc'][i], df_evt['e_utc'][i], acc_x, acc_y, spd, samp_rate)
-        tot_score, z_score_matrix = individual_scoring(acc_z, dec_z, lat_lt_z, lat_rt_z)
-        
-        df_evaluation.iloc[i, df_evaluation.columns.get_loc('type')] = df_evt['type'][i]
-        df_evaluation.iloc[i, df_evaluation.columns.get_loc('prob')] = df_evt['prob'][i]
-        df_evaluation.iloc[i, df_evaluation.columns.get_loc('score')] = 100.0-tot_score
-        df_evaluation.iloc[i, df_evaluation.columns.get_loc('d')] = df_evt['d'][i]
-        df_evaluation.iloc[i, df_evaluation.columns.get_loc('s_utc')] = df_evt['s_utc'][i]
-        df_evaluation.iloc[i, df_evaluation.columns.get_loc('e_utc')] = df_evt['e_utc'][i]
-        df_evaluation.iloc[i, df_evaluation.columns.get_loc('event_acc')] = df_evt['event_acc'][i]
-        df_evaluation.iloc[i, df_evaluation.columns.get_loc('s_spd')] = df_evt['s_spd'][i]
-        df_evaluation.iloc[i, df_evaluation.columns.get_loc('e_spd')] = df_evt['e_spd'][i]
-        df_evaluation.iloc[i, df_evaluation.columns.get_loc('s_crs')] = df_evt['s_crs'][i]
-        df_evaluation.iloc[i, df_evaluation.columns.get_loc('e_crs')] = df_evt['e_crs'][i]  
-        df_evaluation.iloc[i, df_evaluation.columns.get_loc('s_lat')] = df_evt['s_lat'][i]
-        df_evaluation.iloc[i, df_evaluation.columns.get_loc('e_lat')] = df_evt['e_lat'][i]
-        df_evaluation.iloc[i, df_evaluation.columns.get_loc('s_long')] = df_evt['s_long'][i]
-        df_evaluation.iloc[i, df_evaluation.columns.get_loc('e_long')] = df_evt['e_long'][i]
-        df_evaluation.iloc[i, df_evaluation.columns.get_loc('s_alt')] = df_evt['s_alt'][i]
-        df_evaluation.iloc[i, df_evaluation.columns.get_loc('e_alt')] = df_evt['e_alt'][i]
-            
-        if (df_evt['type'][i]=='RTT') or (df_evt['type'][i])=='LTT':
-            sec_num=3
-        elif (df_evt['type'][i]=='LCR') or (df_evt['type'][i])=='LCL':
-            sec_num=2
     
-        for j in range(sec_num):
-            df_evaluation.iloc[i, df_evaluation.columns.get_loc('sec'+str(j+1)+'_s_spd')] = sec_s_spd[j]
-            df_evaluation.iloc[i, df_evaluation.columns.get_loc('sec'+str(j+1)+'_e_spd')] = sec_e_spd[j]
-            df_evaluation.iloc[i, df_evaluation.columns.get_loc('sec'+str(j+1)+'_spd_bin')] = spd_bin[j]
-            df_evaluation.iloc[i, df_evaluation.columns.get_loc('sec'+str(j+1)+'_acc_z')] = acc_z[j]
-            df_evaluation.iloc[i, df_evaluation.columns.get_loc('sec'+str(j+1)+'_dec_z')] = dec_z[j]
-            df_evaluation.iloc[i, df_evaluation.columns.get_loc('sec'+str(j+1)+'_lat_lt_z')] = lat_lt_z[j]
-            df_evaluation.iloc[i, df_evaluation.columns.get_loc('sec'+str(j+1)+'_lat_rt_z')] = lat_rt_z[j]
+    if df_evt.empty==False:
+        
+        evt_num = df_evt.shape[0]
+        for i in range(evt_num):    
+            sec_s_spd, sec_e_spd, spd_bin, acc_z, dec_z, lat_lt_z, lat_rt_z = \
+            get_event_zscore(df_evt['type'][i], df_evt['s_utc'][i], df_evt['e_utc'][i], acc_x, acc_y, spd, samp_rate)
+            tot_score, z_score_matrix = individual_scoring(acc_z, dec_z, lat_lt_z, lat_rt_z)
+        
+            df_evaluation.iloc[i, df_evaluation.columns.get_loc('type')] = df_evt['type'][i]
+            df_evaluation.iloc[i, df_evaluation.columns.get_loc('prob')] = df_evt['prob'][i]
+            if (100.0-tot_score)<80.0:
+                df_evaluation.iloc[i, df_evaluation.columns.get_loc('score')] = 100.0-tot_score
+            else:
+                df_evaluation.iloc[i, df_evaluation.columns.get_loc('score')] = 20.0
+            df_evaluation.iloc[i, df_evaluation.columns.get_loc('d')] = df_evt['d'][i]
+            df_evaluation.iloc[i, df_evaluation.columns.get_loc('s_utc')] = df_evt['s_utc'][i]
+            df_evaluation.iloc[i, df_evaluation.columns.get_loc('e_utc')] = df_evt['e_utc'][i]
+            df_evaluation.iloc[i, df_evaluation.columns.get_loc('event_acc')] = df_evt['event_acc'][i]
+            df_evaluation.iloc[i, df_evaluation.columns.get_loc('s_spd')] = df_evt['s_spd'][i]
+            df_evaluation.iloc[i, df_evaluation.columns.get_loc('e_spd')] = df_evt['e_spd'][i]
+            df_evaluation.iloc[i, df_evaluation.columns.get_loc('s_crs')] = df_evt['s_crs'][i]
+            df_evaluation.iloc[i, df_evaluation.columns.get_loc('e_crs')] = df_evt['e_crs'][i]  
+            df_evaluation.iloc[i, df_evaluation.columns.get_loc('s_lat')] = df_evt['s_lat'][i]
+            df_evaluation.iloc[i, df_evaluation.columns.get_loc('e_lat')] = df_evt['e_lat'][i]
+            df_evaluation.iloc[i, df_evaluation.columns.get_loc('s_long')] = df_evt['s_long'][i]
+            df_evaluation.iloc[i, df_evaluation.columns.get_loc('e_long')] = df_evt['e_long'][i]
+            df_evaluation.iloc[i, df_evaluation.columns.get_loc('s_alt')] = df_evt['s_alt'][i]
+            df_evaluation.iloc[i, df_evaluation.columns.get_loc('e_alt')] = df_evt['e_alt'][i]
+            
+            if (df_evt['type'][i]=='RTT') or (df_evt['type'][i])=='LTT':
+                sec_num=3
+            elif (df_evt['type'][i]=='LCR') or (df_evt['type'][i])=='LCL':
+                sec_num=2
+    
+            for j in range(sec_num):
+                df_evaluation.iloc[i, df_evaluation.columns.get_loc('sec'+str(j+1)+'_s_spd')] = sec_s_spd[j]
+                df_evaluation.iloc[i, df_evaluation.columns.get_loc('sec'+str(j+1)+'_e_spd')] = sec_e_spd[j]
+                df_evaluation.iloc[i, df_evaluation.columns.get_loc('sec'+str(j+1)+'_spd_bin')] = spd_bin[j]
+                df_evaluation.iloc[i, df_evaluation.columns.get_loc('sec'+str(j+1)+'_acc_z')] = acc_z[j]
+                df_evaluation.iloc[i, df_evaluation.columns.get_loc('sec'+str(j+1)+'_dec_z')] = dec_z[j]
+                df_evaluation.iloc[i, df_evaluation.columns.get_loc('sec'+str(j+1)+'_lat_lt_z')] = lat_lt_z[j]
+                df_evaluation.iloc[i, df_evaluation.columns.get_loc('sec'+str(j+1)+'_lat_rt_z')] = lat_rt_z[j]
             
     df_evaluation = df_evaluation.dropna(how='all') 
     
@@ -213,24 +218,34 @@ def acc_eva(df_acc, z_threshold):
     :param df_acc: dataframe for detected accelerations
     :param z_threshold: threshold of z-score that acceleration breaches
     :return : evaluation summary table in dataframe format
-    """
-    df_acc_eva = df_acc.copy(deep=True)
-    df_acc_eva['score']=0.0
-    df_acc_eva = df_acc_eva[['type','prob','score','d','s_utc','e_utc',\
+    """    
+    if df_acc.empty==False:
+        df_acc_eva = df_acc.copy(deep=True)
+        df_acc_eva['score']=0.0
+        df_acc_eva = df_acc_eva[['type','prob','score','d','s_utc','e_utc',\
                              'event_acc','s_spd','e_spd','s_crs','e_crs',\
                              's_lat','e_lat','s_long','e_long','s_alt','e_alt']]
-    param = rdp.read_acc_param("acc_dec_coefficients.csv")
-    acc_num = df_acc_eva.shape[0]
-    alert_score = 3
-    
-    for i in range(acc_num):
-        if df_acc['event_acc'][i]>0:
-            acc_score = dst.z_score(df_acc['event_acc'][i],param['acc_ave'][0],np.sqrt(param['acc_var'][0]))
-            df_acc_eva.iloc[i, df_acc_eva.columns.get_loc('score')] = 100.0-round((acc_score-z_threshold)*alert_score,0)
-        elif df_acc['event_acc'][i]<0:
-            acc_score = dst.z_score(df_acc['event_acc'][i],param['dec_ave'][0],np.sqrt(param['dec_var'][0]))            
-            df_acc_eva.iloc[i, df_acc_eva.columns.get_loc('score')] = 100.0-round(-1*(acc_score+z_threshold)*alert_score,0)
-
+        param = rdp.read_acc_param("acc_dec_coefficients.csv")
+        acc_num = df_acc_eva.shape[0]
+        alert_score = 3
+       
+        for i in range(acc_num):
+            if df_acc['event_acc'][i]>0:
+                acc_score = dst.z_score(df_acc['event_acc'][i],param['acc_ave'][0],np.sqrt(param['acc_var'][0]))
+                if (acc_score-z_threshold)*alert_score<80:
+                    df_acc_eva.iloc[i, df_acc_eva.columns.get_loc('score')] = 100.0-round((acc_score-z_threshold)*alert_score,0)
+                else:
+                    df_acc_eva.iloc[i, df_acc_eva.columns.get_loc('score')] = 20.0
+            elif df_acc['event_acc'][i]<0:
+                acc_score = dst.z_score(df_acc['event_acc'][i],param['dec_ave'][0],np.sqrt(param['dec_var'][0]))            
+                if -1*(acc_score+z_threshold)*alert_score<80:
+                    df_acc_eva.iloc[i, df_acc_eva.columns.get_loc('score')] = 100.0-round(-1*(acc_score+z_threshold)*alert_score,0)
+                else:
+                    df_acc_eva.iloc[i, df_acc_eva.columns.get_loc('score')] = 20.0
+    else:
+        df_acc_eva = pd.DataFrame(np.nan, index=np.arange(0), columns=['type','prob',\
+                              'score','d','s_utc','e_utc','event_acc','s_spd','e_spd',\
+                              's_crs','e_crs','s_lat','e_lat','s_long','e_long','s_alt','e_alt'])
     return df_acc_eva
 
 
