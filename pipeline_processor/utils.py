@@ -32,7 +32,7 @@ def get_measurements(track_uuid, engine):
             """.format(timestamp_from=timestamp_from,
                        timestamp_to=timestamp_to,
                        track_uuid=track_uuid)
- return pd.read_sql_query(query, con=engine)
+  return pd.read_sql_query(query, con=engine)
 
 
 
