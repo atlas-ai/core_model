@@ -49,9 +49,8 @@ class Worker(Process):
             print('TIMESTAMP FROM:', data['oldest_unprocessed_timestamp'], 'TO:', payload_data['t'], 'DIFF:',
                   (payload_data['t'] - data['oldest_unprocessed_timestamp']))
 
-            # Query needed measurements data (add 15 seconds (15000 millis) more for overlap data)
-            df = get_measurements(timestamp_from=float(data['oldest_unprocessed_timestamp']) - 15,
-                                  timestamp_to=payload_data['t'], track_uuid=payload_data['track_uuid'],
+            # Query needed measurements data
+            df = get_measurements( track_uuid=payload_data['track_uuid'],
                                   engine=self.engine)
 
             # Emulating Main.write_acc()
@@ -93,25 +92,45 @@ class Worker(Process):
                 logging.exception("AN EXCEPTION OCURRED")
 
             # No matter if the algorithm returned any results or not, update measurements data and set it as processed
-            query = """
-                    UPDATE measurement
-                    SET status = '{new_status}'
-                    WHERE (data->>'t')::numeric >= '{timestamp_from}'::numeric
-                        AND (data->>'t')::numeric <= '{timestamp_to}'
-                        AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
-                    """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
-                       timestamp_to=payload_data['t'],
-                       track_uuid=payload_data['track_uuid'],
-                       new_status=Status.PROCESSED.value)
-
-            print("SET measurement processed TRACK_UUID {track_uuid} "
-                  "FROM {timestamp_from} TO {timestamp_to}".format(track_uuid=payload_data['track_uuid'],
-                                                                   timestamp_from=data['oldest_unprocessed_timestamp'],
-                                                                   timestamp_to=payload_data['t']))
-
             con = connect_db()
             cursor = con.cursor()
+
+            query="""
+                    INSERT INTO measurement_processed (data)
+                    SELECT data FROM measurement_incoming
+                    WHERE (data->>'t')::numeric <= '{timestamp_to}'
+                        AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
+            ;
+            """.format(track_uuid=payload_data['track_uuid'],
+                timestamp_to=float(payload_data['t'])-15)
+
             cursor.execute(query)
+
+#            print("SET measurement processed TRACK_UUID {track_uuid} "
+#                  "FROM {timestamp_from} TO {timestamp_to}".format(track_uuid=payload_data['track_uuid'],
+#                                                                   timestamp_from=data['oldest_unprocessed_timestamp'],
+#                                                                   timestamp_to=payload_data['t']))
+
+
+            query="""
+                    DELETE FROM measurement_incoming
+                    WHERE (data->>'t')::numeric <= '{timestamp_to}'
+                          AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid;
+                    """.format(track_uuid=payload_data['track_uuid'],
+                        timestamp_to=float(payload_data['t'])-15)
+
+            cursor.execute(query)
+
+            query="""
+                    UPDATE current_users
+                    SET insert_date='{timestamp_to}'::numeric
+                    WHERE (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
+		            """.format(timestamp_to=payload_data['t'],
+                    track_uuid=payload_data['track_uuid'])
+
+            cursor.execute(query)
+
+
             con.commit()
 
             # Check if the data coming is a "track_finished" event and if so, call the track cleanup function

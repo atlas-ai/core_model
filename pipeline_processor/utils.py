@@ -22,16 +22,12 @@ def connect_db():
     return connection
 
 
-def get_measurements(timestamp_from, timestamp_to, track_uuid, engine):
+def get_measurements(track_uuid, engine):
     query = """
                 SELECT *
-                FROM measurement
-                WHERE (data->>'t')::numeric >= '{timestamp_from}'
-                    AND (data->>'t')::numeric <= '{timestamp_to}'
-                    AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
-            """.format(timestamp_from=timestamp_from,
-                       timestamp_to=timestamp_to,
-                       track_uuid=track_uuid)
+                FROM measurement_incoming
+                WHERE (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
+            """.format(track_uuid=track_uuid)
     return pd.read_sql_query(query, con=engine)
 
 
