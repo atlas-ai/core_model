@@ -17,8 +17,10 @@ BEGIN
 		FROM current_users
 		WHERE track_uuid = insert_row_track_uuid
 	); 
+
 	
-	IF oldest_unprocessed_timestamp IS NULLa
+	
+	IF oldest_unprocessed_timestamp IS NULL
 	THEN
 		INSERT INTO current_users (track_uuid, insert_date)
 		SELECT insert_row_track_uuid, insert_row_timestamp;
@@ -26,9 +28,14 @@ BEGIN
 
 
 
-        IF (insert_row_timestamp - oldest_unprocessed_timestamp >= 45) OR
+        IF (insert_row_timestamp - oldest_unprocessed_timestamp >= 60) OR
            ((NEW.data->'name') IS NOT NULL AND (NEW.data->>'name' = 'track_finished'))
         THEN
+	    -- Keep last 15 seconds of data
+	    UPDATE current_users
+	    SET insert_date = insert_row_timestamp-15 
+	    WHERE track_uuid = insert_row_track_uuid
+
             notification = json_build_object('table', TG_TABLE_NAME,
                                              'action', TG_OP,
                                              'oldest_unprocessed_timestamp', oldest_unprocessed_timestamp,

@@ -121,15 +121,6 @@ class Worker(Process):
 
             cursor.execute(query)
 
-            query="""
-                    UPDATE current_users
-                    SET insert_date='{timestamp_to}'::numeric
-                    WHERE (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
-		            """.format(timestamp_to=payload_data['t'],
-                    track_uuid=payload_data['track_uuid'])
-
-            cursor.execute(query)
-
 
             con.commit()
 
