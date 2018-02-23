@@ -50,7 +50,7 @@ class Worker(Process):
                   (payload_data['t'] - data['oldest_unprocessed_timestamp']))
 
             # Query needed measurements data
-            df = get_measurements( track_uuid=payload_data['track_uuid'],
+            df = get_measurements(timestamp_to=payload_data['t'], track_uuid=payload_data['track_uuid'],
                                   engine=self.engine)
 
             # Emulating Main.write_acc()

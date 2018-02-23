@@ -11,15 +11,15 @@ BEGIN
 
     IF insert_row_track_uuid IS NOT NULL AND insert_row_timestamp IS NOT NULL
     THEN
-	oldest_unprocessed_timestamp = 	
+	oldest_unprocessed_timestamp =
 	(
 		SELECT insert_date
 		FROM current_users
 		WHERE track_uuid = insert_row_track_uuid
-	); 
+	);
 
-	
-	
+
+
 	IF oldest_unprocessed_timestamp IS NULL
 	THEN
 		INSERT INTO current_users (track_uuid, insert_date)
@@ -32,20 +32,20 @@ BEGIN
            ((NEW.data->'name') IS NOT NULL AND (NEW.data->>'name' = 'track_finished'))
         THEN
 	    -- Keep last 15 seconds of data
-	    UPDATE current_users
-	    SET insert_date = insert_row_timestamp-15 
-	    WHERE track_uuid = insert_row_track_uuid
+      	    UPDATE current_users
+            SET insert_date = insert_row_timestamp-15
+      	    WHERE track_uuid = insert_row_track_uuid;
 
             notification = json_build_object('table', TG_TABLE_NAME,
                                              'action', TG_OP,
                                              'oldest_unprocessed_timestamp', oldest_unprocessed_timestamp,
                                              'payload', row_to_json(NEW));
-        
+
             -- Send notification to channel_
             PERFORM pg_notify('notifications', notification::text);
 
             -- Logging
-            IF (insert_row_timestamp - oldest_unprocessed_timestamp >= 45)
+            IF (insert_row_timestamp - oldest_unprocessed_timestamp >= 60)
             THEN
                 RAISE NOTICE 'ENOUGH UNPROCESSED MEASUREMENTS, NOTIFICATION SENT TO CHANNEL, UUID:%, FROM:%, TO:%', insert_row_track_uuid, oldest_unprocessed_timestamp, insert_row_timestamp;
             ELSIF (NEW.data->'name') IS NOT NULL AND (NEW.data->>'name' = 'track_finished')
@@ -68,8 +68,8 @@ RAISE NOTICE 'REPLAY EVENT RECEIVED, NOTIFICATION SENT TO CHANNEL, UUID:%, FROM:
 
 
     END IF;
-  	
-	
+
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -77,4 +77,3 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS table_insert_notify_incoming ON measurement_incoming;
 CREATE TRIGGER table_insert_notify_incoming AFTER INSERT ON measurement_incoming FOR EACH ROW EXECUTE PROCEDURE table_insert_notify_incoming();
-

@@ -23,12 +23,17 @@ def connect_db():
 
 
 def get_measurements(track_uuid, engine):
-    query = """
+
+  query = """
                 SELECT *
                 FROM measurement_incoming
-                WHERE (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
-            """.format(track_uuid=track_uuid)
-    return pd.read_sql_query(query, con=engine)
+                WHERE (data->>'t')::numeric <= '{timestamp_to}'
+                    AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
+            """.format(timestamp_from=timestamp_from,
+                       timestamp_to=timestamp_to,
+                       track_uuid=track_uuid)
+ return pd.read_sql_query(query, con=engine)
+
 
 
 def get_detected_events_for_track(track_uuid, engine):
