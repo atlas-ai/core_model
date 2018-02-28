@@ -36,7 +36,7 @@ if __name__ == '__main__':
             df_json = df_filter.to_json(orient="records")
             df_json = json.loads(df_json)
 
-            insert_query = "INSERT INTO measurement (data) VALUES "
+            insert_query = "INSERT INTO measurement_incoming (data) VALUES "
 
             for item in df_json:
                 insert_query += """('{dict_res}'::jsonb),""".format(dict_res=json.dumps(item))
