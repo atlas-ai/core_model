@@ -22,9 +22,8 @@ def connect_db():
     return connection
 
 
-def get_measurements(timestamp_to, track_uuid,engine):
-
-  query = """
+def get_measurements(timestamp_to, track_uuid, engine):
+    query = """
                 SELECT *
                 FROM measurement_incoming
                 WHERE (data->>'t')::numeric <= '{timestamp_to}'
@@ -32,9 +31,7 @@ def get_measurements(timestamp_to, track_uuid,engine):
             """.format(
                        timestamp_to=timestamp_to,
                        track_uuid=track_uuid)
-  return pd.read_sql_query(query, con=engine)
-
-
+    return pd.read_sql_query(query, con=engine)
 
 def get_detected_events_for_track(track_uuid, engine):
     query = """
@@ -72,7 +69,7 @@ def get_measurements_for_replay(track_uuid, engine):
                NULLIF((data->>'rot_rate_y'), '')::numeric AS rot_rate_y,
                NULLIF((data->>'rot_rate_z'), '')::numeric AS rot_rate_z,
                data->>'name' AS name
-        FROM measurement
+        FROM measurement_incoming
         WHERE data->>'track_uuid' = '{track_uuid}'
             AND ((data->'name') IS NULL OR data->>'name' NOT LIKE 'replay')
         ORDER BY data->>'t'
