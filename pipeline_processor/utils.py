@@ -33,6 +33,7 @@ def get_measurements(timestamp_to, track_uuid, engine):
                        track_uuid=track_uuid)
     return pd.read_sql_query(query, con=engine)
 
+
 def get_detected_events_for_track(track_uuid, engine):
     query = """
                 SELECT *

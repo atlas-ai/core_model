@@ -95,14 +95,12 @@ class Worker(Process):
             con = connect_db()
             cursor = con.cursor()
 
-            query="""
+            query = """
                     INSERT INTO measurement_processed (data)
                     SELECT data FROM measurement_incoming
                     WHERE (data->>'t')::numeric <= '{timestamp_to}'
-                        AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
-            ;
-            """.format(track_uuid=payload_data['track_uuid'],
-                timestamp_to=float(payload_data['t'])-15)
+                        AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid;
+            """.format(track_uuid=payload_data['track_uuid'], timestamp_to=float(payload_data['t'])-15)
 
             cursor.execute(query)
 
@@ -111,17 +109,13 @@ class Worker(Process):
 #                                                                   timestamp_from=data['oldest_unprocessed_timestamp'],
 #                                                                   timestamp_to=payload_data['t']))
 
-
-            query="""
+            query = """
                     DELETE FROM measurement_incoming
                     WHERE (data->>'t')::numeric <= '{timestamp_to}'
                           AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid;
-                    """.format(track_uuid=payload_data['track_uuid'],
-                        timestamp_to=float(payload_data['t'])-15)
+                    """.format(track_uuid=payload_data['track_uuid'], timestamp_to=float(payload_data['t'])-15)
 
             cursor.execute(query)
-
-
             con.commit()
 
             # Check if the data coming is a "track_finished" event and if so, call the track cleanup function
