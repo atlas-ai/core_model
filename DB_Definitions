@@ -1,0 +1,51 @@
+bookings
+
+- Student individual booking of a time slot
+- driver_id : student
+- subject_id : class suject
+- route_id : class fixed route
+Question : does booking always involve a fixed route ?
+  If YES, then the field must be made "NOT NULL"
+
+- attended :  is NULL on creation and is updated once the class is completed
+- trackuuid : field is NULL on creation and MUST be filled upon start of the class.
+
+
+Question : should there be a cancellation mechanism ?
+  If YES, then we should add a "cancelled" status somewhere
+
+Question : should there be a class time change schedule mechanism ?
+
+
+driver
+
+- Students or other user of the app
+- Phone number is the "UNIQUE" identifier
+
+Instructor :
+
+- Teachers in school.
+- Their unique identifier is phone which is compulsory and has a "UNIQUE" constraint_error
+
+schedule
+
+- Time slot allocated for a specific Teacher
+- Every "schedule" is given "bookings"
+
+Question : should the application be able to change teacher once it is created ?
+Question : should there be a "class completed" status once the teacher finishes ?
+
+
+Route :
+
+- Fixed routes that the school use to test their students
+- The detail of the routes is included in the "Waypoints" able
+
+School :
+
+- One record per school
+
+Waypoints
+
+- Waypoints that are used to evaluate student driving
+- They are composed of coordinates and waypoint waypoint subjects
