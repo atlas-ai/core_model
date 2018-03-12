@@ -1,8 +1,9 @@
-CREATE SCHEMA IF NOT EXISTS atlas;
+CREATE SCHEMA IF NOT EXISTS backend;
+CREATE SCHEMA IF NOT EXISTS api;
 
-SET SEARCH_PATH to atlas;
+SET SEARCH_PATH to api;
 
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA atlas;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA api;
 
 DROP TABLE IF EXISTS school CASCADE;
 CREATE TABLE school (
@@ -45,8 +46,42 @@ id SERIAL PRIMARY KEY,
 school_id int REFERENCES school,
 name varchar,
 phone int NOT NULL UNIQUE,
+date_modified timestamp,
 creation_date timestamp
 );
+
+
+DROP TABLE IF EXIST student_score CASCADE;
+CREATE TABLE driver_score(
+  id SERIAL PRIMARY KEY,
+  driver_id int REFERENCES driver,
+  total_score float,
+  progression float,
+  driving_time float,
+  d1_focus float,
+  f2_efficiency float,
+  d3_anticipation float,
+  d4_legality float,
+  d5_progression float,
+  r_turn_score float,
+  r_turn_speed float,
+  r_turn_acc float,
+  l_turn_speed float,
+  l_turn_acc float,
+  l_turn_score float,
+  u_turn_speed float,
+  u_turn_acc float,
+  u_turn_score float,
+  r_lc_speed float,
+  r_lc_acc float,
+  r_lc_score float,
+  l_lc_speed float,
+  l_lc_acc float,
+  l_lc_score float,
+  creation_date timestamp,
+  date_modified timestamp
+);
+
 
 
 DROP TABLE IF EXISTS class_subject CASCADE;
@@ -61,6 +96,27 @@ DROP TABLE IF EXISTS physical_device CASCADE;
 CREATE TABLE physical_device (
   id SERIAL PRIMARY KEY,
   device_name varchar,
+  rot_rate_x float,
+  rot_rate_y float,
+  user_a_x float,
+  user_a_y float,
+  user_a_z float,
+  cam_matrix_11 float,
+  cam_matrix_12 float,
+  cam_matrix_13 float,
+  cam_matrix_21 float,
+  cam_matrix_22 float,
+  cam_matrix_23 float,
+  cam_matrix_31 float,
+  cam_matrix_32 float,
+  cam_matrix_33 float,
+  distortion_mat_1 float,
+  distortion_mat_2 float,
+  distortion_mat_3 float,
+  distortion_mat_4 float,
+  distortion_mat_5 float,
+  reso_x float,
+  reso_y float,
   creation_date timestamp
 );
 
@@ -114,7 +170,29 @@ DROP TABLE IF EXISTS track CASCADE;
 CREATE TABLE track (
 id uuid NOT NULL DEFAULT uuid_generate_v1mc() PRIMARY KEY,
 driver_id int NOT NULL REFERENCES driver,
-device_id int NOT NULL REFERENCES device
+device_id int NOT NULL REFERENCES device,
+t float,
+att_pitch float,
+att_roll float,
+att_yaw float,
+rot_rate_x float,
+rot_rate_y float,
+rot_rate_z float,
+user_a_x float,
+user_a_y float,
+user_a_z float,
+g_x float,
+g_y float,
+g_z float,
+m_x float,
+m_y float,
+m_z float,
+lat float,
+long float,
+alt float,
+speed float,
+course float,
+name varchar
 -- device_id int NOT NULL REFERENCES device
 );
 
