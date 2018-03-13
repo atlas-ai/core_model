@@ -12,11 +12,6 @@ from work_flow import execute_algorithm, clean_results
 from pipeline_processor.utils import connect_db, get_detected_events_for_track, get_measurements
 
 
-class Status(Enum):
-    UNPROCESSED = 'unprocessed'
-    PROCESSING = 'processing'
-    PROCESSED = 'processed'
-
 
 class Events(Enum):
     TRACK_FINISHED = 'track_finished'
@@ -71,21 +66,7 @@ class Worker(Process):
 
                 if not df_sum.empty:
                     print('UNIQUE ALGORITHM RESULTS:', df_sum['type'].unique())
-                    # Check if data has been processed already
-                    query = """
-                            SELECT status
-                            FROM measurement
-                            WHERE (data->>'t')::numeric = '{timestamp_from}'::numeric
-                                AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
-                            LIMIT 1
-                        """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
-                                   track_uuid=payload_data['track_uuid'])
-                    df_processed = pd.read_sql_query(query, con=self.engine)
 
-                    # If data hasn't been processed yet then store the results
-                    if df_processed.empty or df_processed.ix[0]['status'] != Status.PROCESSED.value:
-                        df_sum.to_sql(name='detected_events', con=self.engine, if_exists='append', index=False)
-                        print('RESULTS SAVED')
                 else:
                     print('ALGORITHM DIDN\'T RETURN ANYTHING')
             except BaseException as e:
