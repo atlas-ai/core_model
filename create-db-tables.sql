@@ -2,8 +2,8 @@
 
 CREATE TABLE IF NOT EXISTS measurement_incoming (
 	id uuid NOT NULL DEFAULT uuid_generate_v1mc(),
-	data jsonb, 
-	insertdate timestamp
+	data jsonb 
+
 );
 
 CREATE INDEX track_uuid_incoming_index ON measurement_incoming ((data->>'track_uuid'));
@@ -12,8 +12,7 @@ CREATE INDEX track_uuid_incoming_index ON measurement_incoming ((data->>'track_u
 
 CREATE TABLE IF NOT EXISTS measurement_processed (
 	id uuid NOT NULL DEFAULT uuid_generate_v1mc(), 
-	data jsonb, 
-	insertdate timestamp
+	data jsonb
 );
 
 CREATE INDEX track_uuid_processed_index ON measurement_processed ((data->>'track_uuid'));
