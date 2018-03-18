@@ -10,11 +10,12 @@ import numpy as np
 import pandas as pd
 
 import read_data_n_param as rdp
-import cleaning as fin
-import frame as ffc
-import detection as fdet
-import evaluation as feva
-import data_query as fdqu
+import cleaning as cln
+import frame as frm
+import detection as det
+import evaluation as eva
+import data_query as dqu
+import filtering as fil
 
 import glob
 import os
@@ -30,37 +31,34 @@ def clean_data(filename, imu_sheet, gps_sheet):
     :param gps_sheet: name of gps sheet
     :return: imu and gps in dataframe format
     """
-    #gps_sheet = "GPS"
-    #imu_sheet = "IMU"
     res = pd.read_excel(filename,sheetname=[imu_sheet,gps_sheet])
-    imu = fin.imu_data(res[imu_sheet])
-    gps = fin.gps_data(res[gps_sheet])     
+    imu = cln.imu_data(res[imu_sheet])
+    gps = cln.gps_data(res[gps_sheet])     
     return imu, gps
 
 
 #Step 2: Conduct frame conversion process
-def convert_frame(imu, gps, samp_rate, device_id):
+def convert_frame(imu, gps, samp_rate, cali_file, device_id):
     """ read cleaned imu and gps data and conduct frame converion
 
     :param imu: dataframe for imu
     :param gps: dataframe for gps
     :return: converted data in dataframe format
     """
-    print ('Original Dataset Size: %s' % imu.shape[0])
-    imu_samp = fin.sampling_control(imu, samp_rate)
-    print ('After Sampling Control: %s' % imu_samp.shape[0])
-    cali_param = rdp.read_cali_matrix('calibration_matrix.csv', device_id)
-    imu_cal = fin.apply_calibration(imu_samp, cali_param)
-    acc_imu = ffc.car_acceleration(imu_cal['rot_rate_x'], imu_cal['rot_rate_y'], imu_cal['rot_rate_z'],\
+    start = timeit.default_timer()
+    cali_param = rdp.read_cali_matrix(cali_file, device_id)
+    imu_samp = cln.sampling_control(imu, samp_rate)    
+    imu_cal = cln.apply_calibration(imu_samp, cali_param)
+    acc_imu = frm.car_acceleration(imu_cal['rot_rate_x'], imu_cal['rot_rate_y'], imu_cal['rot_rate_z'],\
                             imu_cal['user_a_x'], imu_cal['user_a_y'], imu_cal['user_a_z'],\
                             imu_cal['g_x'], imu_cal['g_y'], imu_cal['g_z'],\
                             imu_cal['m_x'], imu_cal['m_y'], imu_cal['m_z'],\
                             gps['lat'], gps['long'], gps['alt'], gps['course'], gps['speed'])  
-    print ('After Conversion: %s' % acc_imu.shape[0])
     acc_imu = acc_imu.dropna(how='all') 
-    print ('After Conversion Drop NA: %s' % acc_imu.shape[0])
-    acc_gps = ffc.car_acceleration_from_gps(acc_imu['course'], acc_imu['speed'])
+    acc_gps = frm.car_acceleration_from_gps(acc_imu['course'], acc_imu['speed'])
     df_fc = pd.concat([acc_imu, acc_gps],axis=1)   
+    stop = timeit.default_timer()
+    print ('Frame Conversion Run Time: %s seconds ' % round((stop - start),2))     
     return df_fc
 
 
@@ -72,14 +70,15 @@ def apply_filter(df_fc, n_smooth):
     :param n_smooth: smoothing factor
     :return: series of processed accelerations, rotation rates, course and speed
     """
-    df_smooth = df_fc.rolling(n_smooth).mean()
-    df_smooth = df_smooth.dropna(how='all')
-    acc_x, acc_y, rot_z, lat, long, alt, crs, spd, acc_x_gps, acc_y_gps = rdp.read_df(df_smooth)
+    start = timeit.default_timer()
+    acc_x, acc_y, rot_z, lat, long, alt, crs, spd, acc_x_gps, acc_y_gps = fil.acc_adjustment(df_fc, n_smooth)
+    stop = timeit.default_timer()
+    print ('Filtering Run Time: %s seconds ' % round((stop - start),2))     
     return acc_x, acc_y, rot_z, lat, long, alt, crs, spd, acc_x_gps, acc_y_gps
 
 
 #Step 4: Detect events (turns and lane changes) and sudden starts or brakes
-def evt_detection_model(rot_z, lat, long, alt, crs, spd, samp_rate, turn_threshold, lane_change_threshold):    
+def evt_detection_model(rot_z, lat, long, alt, crs, spd, evt_det_file, samp_rate, tn_thr, lc_thr):    
     """ detect events (turns and lane changes)
     
     :param rot_rate_z: imu rotation rate around z   
@@ -87,16 +86,19 @@ def evt_detection_model(rot_z, lat, long, alt, crs, spd, samp_rate, turn_thresho
     :param long: gps longitude in degree
     :param alt: gps altitude in metre
     :param crs: gps course in radians
-    :param spd: speed in m/s2
-    :samp_rate: sampling rate of raw data (has to be the multiple of 20)
+    :param spd: speed in km/hr
+    :param samp_rate: sampling rate of raw data 
+    :param tn_thr: turn threshold
     :return: detected events stored in a summary dataframe
     """
-    evt_param = rdp.read_evt_param("detection_coefficients.csv")  
-    df_event = fdet.event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate, turn_threshold, lane_change_threshold)
-    df_evt_sum = fdet.remove_evt_duplicates(df_event)       
-    return df_evt_sum
+    start = timeit.default_timer()
+    evt_param = rdp.read_evt_detection_param(evt_det_file)
+    df_evt = det.event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate, tn_thr, lc_thr)
+    stop = timeit.default_timer()
+    print ('Event Detection Run Time: %s seconds ' % round((stop - start),2))      
+    return df_evt
 
-def acc_detection_model(acc_x, lat, long, alt, crs, spd, samp_rate, z_threshold):
+def acc_detection_model(acc_x, lat, long, alt, crs, spd, acc_det_file, samp_rate, acc_thr):
     """ detect excessive accelerations (e.g.sudden brakes)
 
     :param acc_x: imu acceleration for car moving direction   
@@ -109,51 +111,59 @@ def acc_detection_model(acc_x, lat, long, alt, crs, spd, samp_rate, z_threshold)
     :param z_threshold: parameter to control the level of acceleration
     :return: detected sudden accelerations or brakes stored in a summary dataframe
     """
-    acc_param = rdp.read_acc_param("acc_dec_coefficients.csv")
-    df_acc_sum = fdet.excess_acc_detection(acc_x, lat, long, alt, crs, spd, acc_param, samp_rate, z_threshold)    
-    return df_acc_sum
+    start = timeit.default_timer()
+    acc_param = rdp.read_acc_detection_param(acc_det_file)
+    df_acc = det.ex_acc_detection(acc_x, lat, long, alt, crs, spd, acc_param, samp_rate, acc_thr)   
+    stop = timeit.default_timer()
+    print ('Excess Acceleration Detection Run Time: %s seconds ' % round((stop - start),2))      
+    return df_acc
 
 
-#Step 5: Evaluate events and return scores
-def evt_evaluation_model(acc_x, acc_y, spd, df_evt_sum, samp_rate):
-    """ evaluate events and return scores
-
+#Step 5: Evaluate events and accelerations
+def evaluation_model(acc_x, acc_x_gps, acc_y, rot_z, spd, crs, df_evt, df_acc, rtt_eva_file, ltt_eva_file, utn_eva_file, \
+                     lcr_eva_file, lcl_eva_file, acc_eva_file, samp_rate, l1_thr, l2_thr, l3_thr, l4_thr, track_id):
+    """
     :param acc_x: imu acceleration for car moving direction
     :param acc_y: imu lateral force
     :param spd: speed in km/h
     :param df_evt_sum: dataframe for event detection results
     :samp_rate: sampling rate of raw data (has to be the multiple of 20)
     :return: evaluation summary in dataframe format
-    """    
-    df_evt_eva = feva.event_eva(acc_x, acc_y, spd, df_evt_sum, samp_rate)        
-    return df_evt_eva
+    """  
+    start = timeit.default_timer()
+    param_rtt = rdp.read_evt_evaluation_param(rtt_eva_file)
+    param_ltt = rdp.read_evt_evaluation_param(ltt_eva_file)
+    param_utn = rdp.read_evt_evaluation_param(utn_eva_file)
+    param_lcr = rdp.read_evt_evaluation_param(lcr_eva_file)
+    param_lcl = rdp.read_evt_evaluation_param(lcl_eva_file)
+    param_acc = rdp.read_acc_evaluation_param(acc_eva_file)
+    df_res = eva.eva_resampling(df_evt, df_acc, acc_x, acc_x_gps, acc_y, rot_z, spd, crs, samp_rate)
+    df_eva = eva.evt_n_acc_evaluation(df_res, param_rtt, param_ltt, param_utn, param_lcr, param_lcl, param_acc,\
+                         samp_rate, l1_thr, l2_thr, l3_thr, l4_thr, track_id)
+    stop = timeit.default_timer()
+    print ('Evaluation Run Time: %s seconds ' % round((stop - start),2))         
+    return df_eva
 
-def acc_evaluation_model(df_acc_sum, z_threshold):
-    """ evaluate excess acceleration and return scores 
+
+#Step 6: Generate result table for display at front end
+def track_display(df, track_id, l1_thr, l2_thr, l3_thr, l4_thr, acc_fac):
+    """ selection of data for display (run at the end of 60s intervals)
     
-    :param df_acc_sum: dataframe for detected accelerations
-    :param z_threshold: threshold of z-score that acceleration breaches
-    :return : evaluation summary in dataframe format
-    """
-    df_acc_eva = feva.acc_eva(df_acc_sum, z_threshold)
-    return df_acc_eva
-
-
-#Step 6: Generate output table with scores
-def evaluation_summary(user_id, df_evt_eva, df_acc_eva, spd, acc_x_gps, samp_rate):
-    """ combine evaluation result table 
-    
-    :param user_id: id of the record
-    :param df_evt_eva: dataframe for event evaluation
-    :param df_acc_eva: dataframe for excess acceleration evaluation
-    :param spd: speed in km/h
-    :param acc_x_gps: acceleration from GPS in G
-    :param samp_rate: sampling rate of raw data (has to be the multiple of 20)
-    :return : evaluation summary table in dataframe format
-    """    
-    df_summary = feva.eva_sum(user_id, df_evt_eva, df_acc_eva)      
-    df_final = fdqu.plot_data_spd_n_acc(df_summary, spd, acc_x_gps, samp_rate) 
-    return df_final
+    :param df: evaluation result table
+    :param track_id: track uuid
+    :param l1_thr: level 1 threshold for evaluation
+    :param l2_thr: level 2 threshold for evaluation
+    :param l3_thr: level 3 threshold for evaluation
+    :param l4_thr: level 4 threshold for evaluation
+    :param acc_fac: factor used for acceleration threshold
+    :return : result table for display at front end
+    """ 
+    start = timeit.default_timer()     
+    df_sum = dqu.remove_duplicates(df, track_id)
+    df_display = dqu.display_track_info(df_sum, l1_thr, l2_thr, l3_thr, l4_thr, acc_fac)
+    stop = timeit.default_timer()
+    print ('Display Run Time: %s seconds ' % round((stop - start),2))         
+    return df_display
 
 
 #Execute main algorithms
@@ -169,6 +179,7 @@ def execute_algorithm(imu, gps, base_id, samp_rate, n_smooth, z_threshold, turn_
     :return : result table in dataframe format
     """    
     start = timeit.default_timer()
+    cali_param = rdp.read_cali_matrix('calibration_matrix.csv', device_id='iPad-001')
     df_fc = convert_frame(imu, gps, samp_rate, device_id='iPad-001')
     acc_x, acc_y, rot_z, lat, long, alt, crs, spd, acc_x_gps, acc_y_gps = apply_filter(df_fc, n_smooth)    
     df_evt = evt_detection_model(rot_z, lat, long, alt, crs, spd, samp_rate, turn_threshold, lane_change_threshold)
@@ -180,25 +191,13 @@ def execute_algorithm(imu, gps, base_id, samp_rate, n_smooth, z_threshold, turn_
     print ('Run Time: %s seconds ' % round((stop - start),2))
     return df_sum
 
-#Clean up results table to remove duplicates
-def clean_results(track_uuid, df_detected_events):
-    """ clean result table at the end of the run
-    
-    :param track_uuid: user id
-    :param df_detected_event: detected events result table
-    :return : cleaned result table in dataframe format
-    """
-    df_cleaned = fdqu.remove_duplicates(track_uuid, df_detected_events)
-    return df_cleaned
 
-    
 ##########################################################
 ####       Main Module - Simulate Loop of 60s Run      ###
 ##########################################################    
 
 def work_flow_with_loop(imu, gps, base_id, samp_rate, n_smooth,\
-                        z_threshold, turn_threshold, lane_change_threshold):
-    
+                        z_threshold, turn_threshold, lane_change_threshold):    
     """ main module to detect, evaluate and summarise driving behaviour for a single file 
     
     :param file_num: file number in the folder
@@ -219,7 +218,7 @@ def work_flow_with_loop(imu, gps, base_id, samp_rate, n_smooth,\
                        'acc_x_gps_16','acc_x_gps_17','acc_x_gps_18','acc_x_gps_19','acc_x_gps_20'])  
     
     #Simulate reading patterns (Do calculation every 60 seconds, with 15 seconds overlapping data.)
-    imu = fin.sampling_control(imu, samp_rate)
+    imu = cln.sampling_control(imu, samp_rate)
     beg_rec = 0
     end_rec = 60*samp_rate
     tot_rep = (imu.shape[0]-60*samp_rate)//(45*samp_rate)+1   
@@ -287,8 +286,8 @@ def read_new_data(file_name, file_type, samp_rate):
         
         file = "../data/Test Data/20171229/" + file_name
         res = pd.read_excel(file,sheetname=['GPS','IMU'])
-        gps = fin.gps_data(res['GPS'])
-        imu = fin.imu_data(res['IMU'])
+        gps = cln.gps_data(res['GPS'])
+        imu = cln.imu_data(res['IMU'])
     
         
     start_time = imu['t'][0]

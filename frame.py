@@ -263,3 +263,23 @@ def mag_grav_to_frame(g, m):
     y = qextra.cross(g, m)  # y direction in geoframe normal to g and m
     res = rotate_2vec(g, qtr.z, y, qtr.y)
     return res
+
+
+def dist_est(lat, long, r = 6371008):
+    """estimate distance between two coordinates
+    
+    :param lat: latitude(degree)
+    :param long: longitude(degree)
+    :param r: radius of earth(mean = 6,371,008 m)
+    :return: distance (m)
+    """
+    delta_lat = np.radians(lat.diff().bfill())
+    delta_long = np.radians(long.diff().bfill())
+    a = np.sin(delta_lat/2)*np.sin(delta_lat/2)+\
+        np.cos(np.radians(lat.shift().bfill()))*np.cos(np.radians(lat))*np.sin(delta_long/2)*np.sin(delta_long/2)
+    c = 2*np.arctan2(np.sqrt(a),np.sqrt(1-a))
+    d = r*c
+    return d
+
+
+

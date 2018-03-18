@@ -47,6 +47,7 @@ def gps_data(df):
     df['speed'] = df['speed'].replace(-1., np.NaN)
         
     df.index = pd.to_datetime(df['t'], unit='s')
+    df = df[~df.isin(['NaN']).any(axis=1)] 
     df = df[~df.index.duplicated()]  # drop duplicated index    
     return df
 
@@ -61,6 +62,7 @@ def imu_data(df):
     df = df.sort_values(by=['t'])
     df = df.reset_index(drop=True)       
     df.index = pd.to_datetime(df['t'], unit='s')
+    df = df[~df.isin(['NaN']).any(axis=1)] 
     df = df[~df.index.duplicated()] # drop duplicated index
     return df
 
@@ -80,8 +82,8 @@ def sampling_control(imu, samp_rate):
                               ['t','att_pitch','att_roll','att_yaw','rot_rate_x','rot_rate_y','rot_rate_z',\
                               'g_x','g_y','g_z','user_a_x','user_a_y','user_a_z','m_x','m_y','m_z'])
     
-    sT = imu['t']-imu['t'].diff()
-    interval =  imu['t'].diff()
+    sT = imu['t']-imu['t'].diff().bfill()
+    interval =  imu['t'].diff().bfill()
     n = round(interval/(1/samp_rate),0).where(interval>1/samp_rate*3/2)
     dT = interval/n
     df_T = pd.concat([sT.rename('sT'),interval.rename('interval'),n.rename('n'),dT.rename('dT')],axis=1)
