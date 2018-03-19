@@ -161,12 +161,13 @@ def evt_score_algo(acc_z, dec_z, lfc_lt_z, lfc_rt_z, l1_thr, l2_thr, l3_thr, l4_
     
     :param acc_z: z score for acceleration
     :param dec_z: z score for deceleration
-    :param lat_lt_z: z score for lateral force when makeing a left turn (tilting to right)
-    :param lat_rt_z: z score for lateral force when makeing a right turn (tilting to left)
-    :param war_thr: threshold for warning
-    :param alt_thr: threshold for alert
-    :return tot_score: total score of the event
-    :return z_score_matrix: individual scores for each item in matrix format
+    :param lfc_lt_z: z score for lateral force when makeing a left turn (tilting to right)
+    :param lfc_rt_z: z score for lateral force when makeing a right turn (tilting to left)
+    :param l1_thr: l1 threshold for severity measurement
+    :param l2_thr: l2 threshold for severity measurement
+    :param l3_thr: l3 threshold for severity measurement
+    :param l4_thr: l4 threshold for severity measurement
+    :return : total score of the event
     """    
     l1_score = 10
     l2_score = 20
@@ -239,8 +240,8 @@ def ex_acc_score_algo(df_rec, param_acc, acc_type, g=9.8):
     
     :param df_res: series of detected acceleration
     :param param_acc: coefficients for excess acceleration
-    :param evt_type: type of event (acceleration or deceleration)
-    :param exc_thr: threshold of z-score that acceleration breaches
+    :param acc_type: type of acceleration or deceleration
+    :param acc_thr: threshold of z-score that acceleration breaches
     :return : evaluation results for excess acceleration
     """ 
     exc_score = 10
@@ -301,9 +302,10 @@ def evt_n_acc_evaluation(df_res, param_rtt, param_ltt, param_utn, param_lcr, par
     :param param_lcl: coefficients for lane changes to the left evaluation
     :param param_acc: coefficients for excess acceleration
     :param samp_rate: sampling rate of data collection
-    :param war_thr: threshold for warning
-    :param alt_thr: threshold for alert 
-    :param exc_thr: threshold for excess acceleration
+    :param l1_thr: l1 threshold for severity measurement
+    :param l2_thr: l2 threshold for severity measurement
+    :param l3_thr: l3 threshold for severity measurement
+    :param l4_thr: l4 threshold for severity measurement
     :param track_id: uuid
     :return: evaluation result database
     """    
