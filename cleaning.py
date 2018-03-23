@@ -19,37 +19,17 @@ def gps_data(df):
     :param df: raw data dataframe
     :return: cleaned dataframe
     """
-    df = df.rename(columns=gps_columns_conversion)
-    df = df.sort_values(by=['t'])
-    df = df.reset_index(drop=True)
+    gps = df[['t','lat','long','alt','speed','course']].copy()
+    gps['course'] = np.radians(gps['course'])
+    gps = gps.sort_values(by=['t'])
+    gps = gps.reset_index(drop=True)  
+    gps.index = pd.to_datetime(gps['t'], unit='s')
+    gps = gps[~gps.index.duplicated()]
+    gps = gps[~gps.isin(['NaN']).any(axis=1)]  
+    gps = gps[~gps.isin([0.0]).any(axis=1)] 
+    gps = gps[~gps.index.duplicated()]
     
-    df = df.fillna(value=np.NaN)
-    
-    df['lat'] = df['lat'].replace('null', np.NaN)
-    df['lat'] = df['lat'].replace('', np.NaN)
-    df['lat'] = df['lat'].replace(-1., np.NaN)
-    
-    df['long'] = df['long'].replace('null', np.NaN)
-    df['long'] = df['long'].replace('', np.NaN)
-    df['long'] = df['long'].replace(-1., np.NaN)
-    
-    df['alt'] = df['alt'].replace('null', np.NaN)
-    df['alt'] = df['alt'].replace('', np.NaN)
-    df['alt'] = df['alt'].replace(-1., np.NaN)
-    
-    df['course'] = df['course'].replace('null', np.NaN)
-    df['course'] = df['course'].replace('', np.NaN)
-    df['course'] = df['course'].replace(-1., np.NaN)
-    df['course'] = np.radians(df['course'])
-    
-    df['speed'] = df['speed'].replace('null', np.NaN)
-    df['speed'] = df['speed'].replace('', np.NaN)
-    df['speed'] = df['speed'].replace(-1., np.NaN)
-        
-    df.index = pd.to_datetime(df['t'], unit='s')
-    df = df[~df.isin(['NaN']).any(axis=1)] 
-    df = df[~df.index.duplicated()]  # drop duplicated index    
-    return df
+    return gps
 
 
 def imu_data(df):
@@ -58,13 +38,15 @@ def imu_data(df):
     :param df: raw data dataframe
     :return: cleaned dataframe
     """
-    df = df.rename(columns=imu_columns_conversion)            
-    df = df.sort_values(by=['t'])
-    df = df.reset_index(drop=True)       
-    df.index = pd.to_datetime(df['t'], unit='s')
-    df = df[~df.isin(['NaN']).any(axis=1)] 
-    df = df[~df.index.duplicated()] # drop duplicated index
-    return df
+    imu = df[['t','att_pitch','att_roll','att_yaw','rot_rate_x','rot_rate_y','rot_rate_z',\
+              'g_x','g_y','g_z','user_a_x','user_a_y','user_a_z','m_x','m_y','m_z']].copy()
+    imu = imu.sort_values(by=['t'])
+    imu = imu.reset_index(drop=True)       
+    imu.index = pd.to_datetime(imu['t'], unit='s')
+    imu = imu[~imu.isin(['NaN']).any(axis=1)] 
+    imu = imu[~imu.index.duplicated()]
+
+    return imu
 
 
 def sampling_control(imu, samp_rate):
@@ -148,6 +130,44 @@ def apply_calibration(imu, cali_param):
     return df
 
 
+def old_imu_clean(df):
+    """
+    For old data in excel format
+    """
+    df = df.rename(columns=imu_columns_conversion)            
+    df = df.sort_values(by=['t'])
+    df = df.reset_index(drop=True)       
+    df.index = pd.to_datetime(df['t'], unit='s')
+    df = df[~df.isin(['NaN']).any(axis=1)] 
+    df = df[~df.index.duplicated()]     
+    return df
 
 
-
+def old_gps_clean(df):
+    """
+    For old data in excel format
+    """
+    df = df.rename(columns=gps_columns_conversion)
+    df = df.sort_values(by=['t'])
+    df = df.reset_index(drop=True)   
+    df = df.fillna(value=np.NaN)    
+    df['lat'] = df['lat'].replace('null', np.NaN)
+    df['lat'] = df['lat'].replace('', np.NaN)
+    df['lat'] = df['lat'].replace(-1., np.NaN)    
+    df['long'] = df['long'].replace('null', np.NaN)
+    df['long'] = df['long'].replace('', np.NaN)
+    df['long'] = df['long'].replace(-1., np.NaN)    
+    df['alt'] = df['alt'].replace('null', np.NaN)
+    df['alt'] = df['alt'].replace('', np.NaN)
+    df['alt'] = df['alt'].replace(-1., np.NaN)    
+    df['course'] = df['course'].replace('null', np.NaN)
+    df['course'] = df['course'].replace('', np.NaN)
+    df['course'] = df['course'].replace(-1., np.NaN)
+    df['course'] = np.radians(df['course'])    
+    df['speed'] = df['speed'].replace('null', np.NaN)
+    df['speed'] = df['speed'].replace('', np.NaN)
+    df['speed'] = df['speed'].replace(-1., np.NaN)        
+    df.index = pd.to_datetime(df['t'], unit='s')
+    df = df[~df.isin(['NaN']).any(axis=1)] 
+    df = df[~df.index.duplicated()]  # drop duplicated index   
+    return df

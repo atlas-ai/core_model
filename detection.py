@@ -551,6 +551,47 @@ def ex_acc_det_algo(acc_x, lat, long, alt, crs, spd, acc_param, samp_rate, acc_t
     return df_acc
 
 
+def remove_acc_duplicates(df_acc):    
+    """ remove duplicates of excess acceleration
+
+    :param df_acc: preliminary dataframe for excess acceleration   
+    :return: detected excess accelerations as points in time
+    """
+    
+    if df_acc.empty==False:
+        
+        df_acc['duplicate']=0
+        accLen=df_acc.shape[0]
+        df_acc.iloc[0,df_acc.columns.get_loc('duplicate')]=1
+        overlap_indicator = 1
+        df_acc['event_acc']=df_acc['event_acc'].apply(lambda x: -1*x if x<0 else x)
+            
+        for i in range(1, accLen):
+            
+            if df_acc['type'][i]==df_acc['type'][i-1]:
+                if (df_acc['e_utc'][i]-df_acc['e_utc'][i-1])/np.timedelta64(1, 's')<=2:
+                    df_acc.iloc[i,df_acc.columns.get_loc('duplicate')]=overlap_indicator
+                else:
+                    overlap_indicator += 1
+                    df_acc.iloc[i,df_acc.columns.get_loc('duplicate')]=overlap_indicator
+            else:
+                overlap_indicator += 1
+                df_acc.iloc[i,df_acc.columns.get_loc('duplicate')]=overlap_indicator
+        
+        df_acc = df_acc.loc[df_acc.groupby('duplicate')['event_acc'].idxmax()]        
+        df_acc = df_acc.reset_index(drop=True)
+        
+        accLen = df_acc.shape[0]
+        for i in range(accLen):
+            if df_acc['type'][i]=='exd':
+                temp_max_dec = df_acc['event_acc'][i]
+                df_acc.iloc[i,df_acc.columns.get_loc('event_acc')]=-1*temp_max_dec
+        
+        df_acc = df_acc.drop('duplicate',axis=1)
+        
+    return df_acc
+
+
 def ex_acc_expansion(acc_x, lat, long, alt, crs, spd, df_acc, samp_rate):
     """Expand maximum point acceleration to period
 
@@ -620,47 +661,6 @@ def ex_acc_expansion(acc_x, lat, long, alt, crs, spd, df_acc, samp_rate):
 
         df_acc['prob']=1.0
         df_acc = df_acc[df_acc['d']>0]
-        
-    return df_acc
-
-
-def remove_acc_duplicates(df_acc):    
-    """ remove duplicates of excess acceleration
-
-    :param df_acc: preliminary dataframe for excess acceleration   
-    :return: detected excess accelerations as points in time
-    """
-    
-    if df_acc.empty==False:
-        
-        df_acc['duplicate']=0
-        accLen=df_acc.shape[0]
-        df_acc.iloc[0,df_acc.columns.get_loc('duplicate')]=1
-        overlap_indicator = 1
-        df_acc['event_acc']=df_acc['event_acc'].apply(lambda x: -1*x if x<0 else x)
-            
-        for i in range(1, accLen):
-            
-            if df_acc['type'][i]==df_acc['type'][i-1]:
-                if (df_acc['e_utc'][i]-df_acc['e_utc'][i-1])/np.timedelta64(1, 's')<=2:
-                    df_acc.iloc[i,df_acc.columns.get_loc('duplicate')]=overlap_indicator
-                else:
-                    overlap_indicator += 1
-                    df_acc.iloc[i,df_acc.columns.get_loc('duplicate')]=overlap_indicator
-            else:
-                overlap_indicator += 1
-                df_acc.iloc[i,df_acc.columns.get_loc('duplicate')]=overlap_indicator
-        
-        df_acc = df_acc.loc[df_acc.groupby('duplicate')['event_acc'].idxmax()]        
-        df_acc = df_acc.reset_index(drop=True)
-        
-        accLen = df_acc.shape[0]
-        for i in range(accLen):
-            if df_acc['type'][i]=='exd':
-                temp_max_dec = df_acc['event_acc'][i]
-                df_acc.iloc[i,df_acc.columns.get_loc('event_acc')]=-1*temp_max_dec
-        
-        df_acc = df_acc.drop('duplicate',axis=1)
         
     return df_acc
 

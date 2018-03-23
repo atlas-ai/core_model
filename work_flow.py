@@ -6,7 +6,7 @@ Created on Mon Oct  9 08:34:31 2017
 @author: SeanXinZhou
 """
 
-import numpy as np
+#import numpy as np
 import pandas as pd
 
 import read_data_n_param as rdp
@@ -17,13 +17,79 @@ import evaluation as eva
 import data_query as dqu
 import filtering as fil
 
-import glob
-import os
+#import glob
+#import os
 import timeit
 
+"""
+Process:
+1) The first step is to run the function of "read_param()" to load all parameters.
+2) The second step is to run the function of "execute_algorithm()", which encapsulates all functions from #1 to #5.
+   The second step is for 60-second intervals.
+3) At the end of the track, a message will be sent from the front end to trigger #6 function of "track_display()".
+   This function will remove all duplicates created from the overlaps of 60-second intervals, and select information
+   from the result table for display at the front end.
+   
+The followings are the global parameters and file names for parameters.
+"""
 
-#Step 1: Read data file and clean imu and gps data
-def clean_data(filename, imu_sheet, gps_sheet):
+samp_rate = 50
+n_smooth = 50
+tn_thr = 0.8
+lc_thr = 0.6
+l1_thr = 2
+l2_thr = 3
+l3_thr = 6
+l4_thr = 12
+acc_thr = 1
+acc_fac = 3
+
+device_id = 'iPad-001'
+cali_file = 'calibration_matrix.csv'
+evt_det_file = 'evt_detection_parameters.csv'
+acc_det_file = 'acc_detection_parameters.csv'
+rtt_eva_file = 'rtt_evaluation_parameters.csv'
+ltt_eva_file = 'ltt_evaluation_parameters.csv'
+utn_eva_file = 'utn_evaluation_parameters.csv'
+lcr_eva_file = 'lcr_evaluation_parameters.csv'
+lcl_eva_file = 'lcl_evaluation_parameters.csv'
+acc_eva_file = 'acc_evaluation_parameters.csv'
+code_file = 'code_sys.xlsx'
+
+
+#0: Read all parameter files at the beginning
+def read_param(cali_file, evt_det_file, acc_det_file, rtt_eva_file, ltt_eva_file, utn_eva_file,\
+               lcr_eva_file, lcl_eva_file, acc_eva_file, code_file, device_id):
+    """ read all parameter files
+
+    :param cali_file: file name for calibration matrix
+    :param evt_det_file: file name for event detection parameters
+    :param acc_det_file: file name for excess acceleration detection parameters
+    :param rtt_eva_file: file name for right turn evaluation parameters
+    :param ltt_eva_file: file name for left turn evaluation parameters
+    :param utn_eva_file: file name for u-turn evaluation parameters
+    :param lcr_eva_file: file name for lane change to right evaluation parameters
+    :param lcl_eva_file: file name for lane change to left evaluation parameters
+    :param acc_eva_file: file name for excess acceleration evaluation parameters
+    :param code_file: file name for coding system
+    :param device_id: device id for calibration matrix
+    :return: all parameters
+    """
+    cali_param = rdp.read_cali_matrix(cali_file, device_id)
+    evt_param = rdp.read_evt_detection_param(evt_det_file)
+    acc_param = rdp.read_acc_detection_param(acc_det_file)
+    param_rtt = rdp.read_evt_evaluation_param(rtt_eva_file)
+    param_ltt = rdp.read_evt_evaluation_param(ltt_eva_file)
+    param_utn = rdp.read_evt_evaluation_param(utn_eva_file)
+    param_lcr = rdp.read_evt_evaluation_param(lcr_eva_file)
+    param_lcl = rdp.read_evt_evaluation_param(lcl_eva_file)
+    param_acc = rdp.read_acc_evaluation_param(acc_eva_file)
+    code_sys = rdp.read_code_sys(code_file)    
+    return cali_param, evt_param, acc_param, param_rtt, param_ltt, param_utn, param_lcr, param_lcl, param_acc, code_sys
+
+
+#1: Read data file and clean imu and gps data
+def clean_data(raw_data):
     """ read imu and gps data and remove invalid and duplicate data
 
     :param filename: input file as .xlsx
@@ -31,14 +97,13 @@ def clean_data(filename, imu_sheet, gps_sheet):
     :param gps_sheet: name of gps sheet
     :return: imu and gps in dataframe format
     """
-    res = pd.read_excel(filename,sheetname=[imu_sheet,gps_sheet])
-    imu = cln.imu_data(res[imu_sheet])
-    gps = cln.gps_data(res[gps_sheet])     
+    imu = cln.imu_data(raw_data)
+    gps = cln.gps_data(raw_data)         
     return imu, gps
 
 
-#Step 2: Conduct frame conversion process
-def convert_frame(imu, gps, samp_rate, cali_file, device_id):
+#2: Conduct frame conversion process
+def convert_frame(imu, gps, samp_rate, cali_param):
     """ read cleaned imu and gps data and conduct frame converion
 
     :param imu: dataframe for imu
@@ -46,7 +111,6 @@ def convert_frame(imu, gps, samp_rate, cali_file, device_id):
     :return: converted data in dataframe format
     """
     start = timeit.default_timer()
-    cali_param = rdp.read_cali_matrix(cali_file, device_id)
     imu_samp = cln.sampling_control(imu, samp_rate)    
     imu_cal = cln.apply_calibration(imu_samp, cali_param)
     acc_imu = frm.car_acceleration(imu_cal['rot_rate_x'], imu_cal['rot_rate_y'], imu_cal['rot_rate_z'],\
@@ -62,7 +126,7 @@ def convert_frame(imu, gps, samp_rate, cali_file, device_id):
     return df_fc
 
 
-#Step 3: Apply filter to reduce sensors' noise
+#3: Apply filter to reduce sensors' noise
 def apply_filter(df_fc, n_smooth):
     """ apply moving average method to reduce noise
 
@@ -73,12 +137,12 @@ def apply_filter(df_fc, n_smooth):
     start = timeit.default_timer()
     acc_x, acc_y, rot_z, lat, long, alt, crs, spd, acc_x_gps, acc_y_gps = fil.acc_adjustment(df_fc, n_smooth)
     stop = timeit.default_timer()
-    print ('Filtering Run Time: %s seconds ' % round((stop - start),2))     
+    print ('Filtering Run Time: %s seconds ' % round((stop - start),2))         
     return acc_x, acc_y, rot_z, lat, long, alt, crs, spd, acc_x_gps, acc_y_gps
 
 
-#Step 4: Detect events (turns and lane changes) and sudden starts or brakes
-def evt_detection_model(rot_z, lat, long, alt, crs, spd, evt_det_file, samp_rate, tn_thr, lc_thr):    
+#4: Detect events (turns and lane changes) and sudden starts or brakes
+def evt_detection_model(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate, tn_thr, lc_thr):    
     """ detect events (turns and lane changes)
     
     :param rot_rate_z: imu rotation rate around z   
@@ -92,13 +156,13 @@ def evt_detection_model(rot_z, lat, long, alt, crs, spd, evt_det_file, samp_rate
     :return: detected events stored in a summary dataframe
     """
     start = timeit.default_timer()
-    evt_param = rdp.read_evt_detection_param(evt_det_file)
     df_evt = det.event_detection(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate, tn_thr, lc_thr)
     stop = timeit.default_timer()
-    print ('Event Detection Run Time: %s seconds ' % round((stop - start),2))      
+    print ('Event Detection Run Time: %s seconds ' % round((stop - start),2))          
     return df_evt
 
-def acc_detection_model(acc_x, lat, long, alt, crs, spd, acc_det_file, samp_rate, acc_thr):
+
+def acc_detection_model(acc_x, lat, long, alt, crs, spd, acc_param, samp_rate, acc_thr):
     """ detect excessive accelerations (e.g.sudden brakes)
 
     :param acc_x: imu acceleration for car moving direction   
@@ -112,31 +176,24 @@ def acc_detection_model(acc_x, lat, long, alt, crs, spd, acc_det_file, samp_rate
     :return: detected sudden accelerations or brakes stored in a summary dataframe
     """
     start = timeit.default_timer()
-    acc_param = rdp.read_acc_detection_param(acc_det_file)
     df_acc = det.ex_acc_detection(acc_x, lat, long, alt, crs, spd, acc_param, samp_rate, acc_thr)   
     stop = timeit.default_timer()
     print ('Excess Acceleration Detection Run Time: %s seconds ' % round((stop - start),2))      
     return df_acc
 
 
-#Step 5: Evaluate events and accelerations
-def evaluation_model(acc_x, acc_x_gps, acc_y, rot_z, spd, crs, df_evt, df_acc, rtt_eva_file, ltt_eva_file, utn_eva_file, \
-                     lcr_eva_file, lcl_eva_file, acc_eva_file, samp_rate, l1_thr, l2_thr, l3_thr, l4_thr, track_id):
+#5: Evaluate events and accelerations
+def evaluation_model(acc_x, acc_x_gps, acc_y, rot_z, spd, crs, df_evt, df_acc, param_rtt, param_ltt, param_utn,\
+                     param_lcr, param_lcl, param_acc, samp_rate, l1_thr, l2_thr, l3_thr, l4_thr, track_id):
     """
     :param acc_x: imu acceleration for car moving direction
     :param acc_y: imu lateral force
-    :param spd: speed in km/h
+    :param spd: speed in km/h 
     :param df_evt_sum: dataframe for event detection results
     :samp_rate: sampling rate of raw data (has to be the multiple of 20)
     :return: evaluation summary in dataframe format
     """  
     start = timeit.default_timer()
-    param_rtt = rdp.read_evt_evaluation_param(rtt_eva_file)
-    param_ltt = rdp.read_evt_evaluation_param(ltt_eva_file)
-    param_utn = rdp.read_evt_evaluation_param(utn_eva_file)
-    param_lcr = rdp.read_evt_evaluation_param(lcr_eva_file)
-    param_lcl = rdp.read_evt_evaluation_param(lcl_eva_file)
-    param_acc = rdp.read_acc_evaluation_param(acc_eva_file)
     df_res = eva.eva_resampling(df_evt, df_acc, acc_x, acc_x_gps, acc_y, rot_z, spd, crs, samp_rate)
     df_eva = eva.evt_n_acc_evaluation(df_res, param_rtt, param_ltt, param_utn, param_lcr, param_lcl, param_acc,\
                          samp_rate, l1_thr, l2_thr, l3_thr, l4_thr, track_id)
@@ -145,12 +202,22 @@ def evaluation_model(acc_x, acc_x_gps, acc_y, rot_z, spd, crs, df_evt, df_acc, r
     return df_eva
 
 
-#Execute main algorithms (encapsulate step 2 to step 5)
-def execute_algorithm(imu, gps, samp_rate, n_smooth, tn_thr, lc_thr, acc_thr, l1_thr, l2_thr, l3_thr, l4_thr, track_id, device_id = 'iPad-001'):
+#6 Execute main algorithms (encapsulate functions #1 to #5)
+def execute_algorithm(raw_data, cali_param, evt_param, acc_param, param_rtt, param_ltt, param_utn, param_lcr, param_lcl,\
+                      param_acc, samp_rate, n_smooth, tn_thr, lc_thr, acc_thr, l1_thr, l2_thr, l3_thr, l4_thr, \
+                      device_id, track_id):
     """ execute main algorithms 
     
-    :param imu: imu data
-    :param gps: gps data
+    :param raw_data: measurements as raw data
+    :param cali_param: file name for calibration matrix
+    :param evt_param: file name for event detection parameters
+    :param acc_param: file name for excess acceleration detection parameters
+    :param param_rtt: file name for right turn evaluation parameters
+    :param param_ltt: file name for left turn evaluation parameters
+    :param param_utn: file name for u-turn evaluation parameters
+    :param param_lcr: file name for lane change to right evaluation parameters
+    :param param_lcl: file name for lane change to left evaluation parameters
+    :param param_acc: file name for excess acceleration evaluation parameters
     :param samp_rate: sampling rate of raw data 
     :param n_smooth: smoothing factor
     :param tn_thr: probability threshold for turns
@@ -160,39 +227,29 @@ def execute_algorithm(imu, gps, samp_rate, n_smooth, tn_thr, lc_thr, acc_thr, l1
     :param l2_thr: l2 threshold for severity measurement
     :param l3_thr: l3 threshold for severity measurement
     :param l4_thr: l4 threshold for severity measurement
-    :param track_id: track uuid
     :param device_id: device id for calibration
+    :param track_id: track uuid    
     :return : detection and evaluation result table
     """   
-    
-    cali_file = 'calibration_matrix.csv'
-    evt_det_file = 'evt_detection_parameters.csv'
-    acc_det_file = 'acc_detection_parameters.csv'
-    rtt_eva_file = 'rtt_evaluation_parameters.csv'
-    ltt_eva_file = 'ltt_evaluation_parameters.csv'
-    utn_eva_file = 'utn_evaluation_parameters.csv'
-    lcr_eva_file = 'lcr_evaluation_parameters.csv'
-    lcl_eva_file = 'lcl_evaluation_parameters.csv'
-    acc_eva_file = 'acc_evaluation_parameters.csv'
-
     start = timeit.default_timer()
-    df_fc = convert_frame(imu, gps, samp_rate, cali_file, device_id)
+    imu, gps = clean_data(raw_data)
+    df_fc = convert_frame(imu, gps, samp_rate, cali_param)
     acc_x, acc_y, rot_z, lat, long, alt, crs, spd, acc_x_gps, acc_y_gps = apply_filter(df_fc, n_smooth)
-    df_evt = evt_detection_model(rot_z, lat, long, alt, crs, spd, evt_det_file, samp_rate, tn_thr, lc_thr)
-    df_acc = acc_detection_model(acc_x, lat, long, alt, crs, spd, acc_det_file, samp_rate, acc_thr)
-    df_eva = evaluation_model(acc_x, acc_x_gps, acc_y, rot_z, spd, crs, df_evt, df_acc, rtt_eva_file, ltt_eva_file,\
-    utn_eva_file, lcr_eva_file, lcl_eva_file, acc_eva_file, samp_rate, l1_thr, l2_thr, l3_thr, l4_thr, track_id)
+    df_evt = evt_detection_model(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate, tn_thr, lc_thr)
+    df_acc = acc_detection_model(acc_x, lat, long, alt, crs, spd, acc_param, samp_rate, acc_thr)
+    df_eva = evaluation_model(acc_x, acc_x_gps, acc_y, rot_z, spd, crs, df_evt, df_acc, param_rtt, param_ltt,\
+    param_utn, param_lcr, param_lcl, param_acc, samp_rate, l1_thr, l2_thr, l3_thr, l4_thr, track_id)
     stop = timeit.default_timer()
-    print ('Execute Algorithm Run Time: %s seconds ' % round((stop - start),2))
-    
+    print ('Execute Algorithm Total Run Time: %s seconds' % round((stop - start),2))       
     return df_eva
 
 
-#Step 6: Generate result table for display at front end
-def track_display(df_eva, track_id, l1_thr, l2_thr, l3_thr, l4_thr, acc_fac):
+#6: Generate result table for display at front end
+def track_display(df_eva, code_sys, track_id, l1_thr, l2_thr, l3_thr, l4_thr, acc_fac):
     """ selection of data for display (run at the end of 60s intervals)
     
-    :param df: evaluation result table
+    :param df_eva: evaluation result table
+    :param code_sys: coding systems for events
     :param track_id: track uuid
     :param l1_thr: level 1 threshold for evaluation
     :param l2_thr: level 2 threshold for evaluation
@@ -203,27 +260,13 @@ def track_display(df_eva, track_id, l1_thr, l2_thr, l3_thr, l4_thr, acc_fac):
     """ 
     start = timeit.default_timer()     
     df_sum = dqu.remove_duplicates(df_eva, track_id)
-    df_display = dqu.display_track_info(df_sum, l1_thr, l2_thr, l3_thr, l4_thr, acc_fac)
+    df_display = dqu.display_track_info(df_sum, code_sys, l1_thr, l2_thr, l3_thr, l4_thr, acc_fac)
     stop = timeit.default_timer()
     print ('Display Run Time: %s seconds ' % round((stop - start),2))         
     return df_display
 
 
-"""
-The current values of global parameters are as follows:
-    
-samp_rate = 50
-n_smooth = 50
-tn_thr = 0.8
-lc_thr = 0.6
-l1_thr = 2
-l2_thr = 3
-l3_thr = 6
-l4_thr = 12
-acc_thr = 1
-acc_fac = 3
 
-"""
 
 
 

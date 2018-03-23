@@ -128,16 +128,111 @@ def evt_sec_codes(rec, l1_thr, l2_thr, l3_thr, l4_thr):
             str(severity_bins(rec['sec'+str(i)+'_dec_z'], l1_thr, l2_thr, l3_thr, l4_thr, 'neg'))
         lfc_lt_code = acc_code + \
         str(severity_bins(rec['sec'+str(i)+'_lat_lt_z'], l1_thr, l2_thr, l3_thr, l4_thr, 'neg'))
-        sec_code[i-1] = lfc_lt_code + \
-        str(severity_bins(rec['sec'+str(i)+'_lat_rt_z'], l1_thr, l2_thr, l3_thr, l4_thr, 'pos'))
+        sec_code[i-1] = int(lfc_lt_code + \
+        str(severity_bins(rec['sec'+str(i)+'_lat_rt_z'], l1_thr, l2_thr, l3_thr, l4_thr, 'pos')))
         
     if (rec['type']=='lcr') or (rec['type']=='lcl'):
-        sec_code[1] = 9999999
-     
+        sec_code[1] = int(9999999)     
     return sec_code
 
 
-def display_track_info(df, l1_thr, l2_thr, l3_thr, l4_thr, acc_fac):
+def evt_metrics(sec_code):
+    """ 3-dimentional metrics for summary of events
+    
+    :param sec_code: section code
+
+    :return anti: anticipation, which measures the appropriate speed and acceleration
+    :return comf: comfort, which measures the intensity of acceleration and lateral force
+    :return cont: control, which measures the direction of lateral force w.r.t events
+    """
+    evt = int(str(sec_code[0])[0])
+    anti = 50
+    comf = 50
+    cont = 50
+    if evt==1:
+
+        for i in range(3):
+            if int(str(sec_code[i])[2])>=4:
+                anti = anti - int(str(sec_code[i])[2])
+            if int(str(sec_code[i])[4])>=3:
+                anti = anti - int(str(sec_code[i])[4])
+            if int(str(sec_code[i])[4])>=3:
+                comf = comf - int(str(sec_code[i])[4])
+            if int(str(sec_code[i])[6])>=3:
+                comf = comf - int(str(sec_code[i])[6])   
+            if int(str(sec_code[i])[5])>0:
+                cont = cont - int(str(sec_code[i])[5])
+            if int(str(sec_code[i])[2])<=2:
+                if int(str(sec_code[i])[6])>=3:
+                    cont = cont - int(str(sec_code[i])[6])  
+    elif (evt==2) or (evt==3):
+        for i in range(3):
+            if int(str(sec_code[i])[2])>=4:
+                anti = anti - int(str(sec_code[i])[2])
+            if int(str(sec_code[i])[4])>=3:
+                anti = anti - int(str(sec_code[i])[4])
+            if int(str(sec_code[i])[4])>=3:
+                comf = comf - int(str(sec_code[i])[4])
+            if int(str(sec_code[i])[5])>=3:
+                comf = comf - int(str(sec_code[i])[5])   
+            if int(str(sec_code[i])[6])>0:
+                cont = cont - int(str(sec_code[i])[6])
+            if int(str(sec_code[i])[2])<=2:
+                if int(str(sec_code[i])[5])>=3:
+                    cont = cont - int(str(sec_code[i])[5])  
+    elif evt==4:
+        if int(str(sec_code[0])[4])>=3:
+            anti = anti - int(str(sec_code[0])[4])
+        if int(str(sec_code[0])[4])>=3:
+            comf = comf - int(str(sec_code[0])[4])
+        if int(str(sec_code[0])[6])>=3:
+            comf = comf - int(str(sec_code[0])[6])   
+        if int(str(sec_code[0])[5])>0:
+            cont = cont - int(str(sec_code[0])[5])
+        if int(str(sec_code[0])[2])<=2:
+            if int(str(sec_code[0])[6])>=3:
+                cont = cont - int(str(sec_code[0])[6]) 
+        if int(str(sec_code[1])[4])>=3:
+            anti = anti - int(str(sec_code[0])[4])
+        if int(str(sec_code[1])[4])>=3:
+            comf = comf - int(str(sec_code[1])[4])
+        if int(str(sec_code[1])[5])>=3:
+            comf = comf - int(str(sec_code[1])[5])   
+        if int(str(sec_code[1])[6])>0:
+            cont = cont - int(str(sec_code[1])[6])
+        if int(str(sec_code[1])[2])<=2:
+            if int(str(sec_code[1])[5])>=3:
+                cont = cont - int(str(sec_code[1])[5])        
+    elif evt==5:
+        if int(str(sec_code[0])[4])>=3:
+            anti = anti - int(str(sec_code[0])[4])
+        if int(str(sec_code[0])[4])>=3:
+            comf = comf - int(str(sec_code[0])[4])
+        if int(str(sec_code[0])[5])>=3:
+            comf = comf - int(str(sec_code[0])[5])   
+        if int(str(sec_code[0])[6])>0:
+            cont = cont - int(str(sec_code[0])[6])
+        if int(str(sec_code[0])[2])<=2:
+            if int(str(sec_code[0])[5])>=3:
+                cont = cont - int(str(sec_code[0])[5]) 
+        if int(str(sec_code[1])[4])>=3:
+            anti = anti - int(str(sec_code[0])[4])
+        if int(str(sec_code[1])[4])>=3:
+            comf = comf - int(str(sec_code[1])[4])
+        if int(str(sec_code[1])[6])>=3:
+            comf = comf - int(str(sec_code[1])[6])   
+        if int(str(sec_code[1])[5])>0:
+            cont = cont - int(str(sec_code[1])[5])
+        if int(str(sec_code[1])[2])<=2:
+            if int(str(sec_code[1])[6])>=3:
+                cont = cont - int(str(sec_code[1])[6])         
+    anti = int(anti/50*5)
+    comf = int(comf/50*5)
+    cont = int(cont/50*5)    
+    return anti, comf, cont
+
+
+def display_track_info(df, code_sys, l1_thr, l2_thr, l3_thr, l4_thr, acc_fac):
     """ summarise results for front end
     
     :param df: evaluation results
@@ -149,38 +244,65 @@ def display_track_info(df, l1_thr, l2_thr, l3_thr, l4_thr, acc_fac):
     :return: evaluation results for display
     """    
     df_display = df.copy(deep=True)
+    df_display['anticipation']=np.NaN
+    df_display['comfort']=np.NaN
+    df_display['control']=np.NaN
     df_display['sec1_code']=np.NaN
     df_display['sec2_code']=np.NaN
     df_display['sec3_code']=np.NaN
+    df_display['sec1_desc']=np.NaN
+    df_display['sec2_desc']=np.NaN
+    df_display['sec3_desc']=np.NaN
+    df_display['sec1_diag']=np.NaN
+    df_display['sec2_diag']=np.NaN
+    df_display['sec3_diag']=np.NaN
+    df_display['sec1_pct']=np.NaN
+    df_display['sec2_pct']=np.NaN
+    df_display['sec3_pct']=np.NaN
     dt_len = df_display.shape[0]
     for i in range(dt_len):
         if (df_display['type'][i]=='rtt') or (df_display['type'][i]=='ltt') or (df_display['type'][i]=='utn') or\
         (df_display['type'][i]=='lcr')  or (df_display['type'][i]=='lcl'):
             sec_code = evt_sec_codes(df_display.iloc[i], l1_thr, l2_thr, l3_thr, l4_thr)
+            anti, comf,cont = evt_metrics(sec_code)
             df_display.iloc[i, df_display.columns.get_loc('sec1_code')] = sec_code[0]
             df_display.iloc[i, df_display.columns.get_loc('sec2_code')] = sec_code[1]
             df_display.iloc[i, df_display.columns.get_loc('sec3_code')] = sec_code[2]
+            sec1_idx = code_sys.index.searchsorted(sec_code[0])
+            sec2_idx = code_sys.index.searchsorted(sec_code[1])
+            sec3_idx = code_sys.index.searchsorted(sec_code[2])
+            df_display.iloc[i, df_display.columns.get_loc('sec1_desc')] = code_sys['description_chn'].iloc[sec1_idx]
+            df_display.iloc[i, df_display.columns.get_loc('sec2_desc')] = code_sys['description_chn'].iloc[sec2_idx]
+            df_display.iloc[i, df_display.columns.get_loc('sec3_desc')] = code_sys['description_chn'].iloc[sec3_idx]            
+            df_display.iloc[i, df_display.columns.get_loc('sec1_diag')] = code_sys['diagnosis_chn'].iloc[sec1_idx]
+            df_display.iloc[i, df_display.columns.get_loc('sec2_diag')] = code_sys['diagnosis_chn'].iloc[sec2_idx]
+            df_display.iloc[i, df_display.columns.get_loc('sec3_diag')] = code_sys['diagnosis_chn'].iloc[sec3_idx] 
+            df_display.iloc[i, df_display.columns.get_loc('sec1_pct')] = code_sys['pct_of_occurrence'].iloc[sec1_idx]
+            df_display.iloc[i, df_display.columns.get_loc('sec2_pct')] = code_sys['pct_of_occurrence'].iloc[sec2_idx]
+            df_display.iloc[i, df_display.columns.get_loc('sec3_pct')] = code_sys['pct_of_occurrence'].iloc[sec3_idx]
+            df_display.iloc[i, df_display.columns.get_loc('anticipation')] = anti
+            df_display.iloc[i, df_display.columns.get_loc('comfort')] = comf
+            df_display.iloc[i, df_display.columns.get_loc('control')] = cont
         elif df_display['type'][i]=='exa':
             df_display.iloc[i, df_display.columns.get_loc('sec1_code')] = \
-            str(1) + str(int(df_display['sec1_spd_bin'][i])) + str(severity_bins(df_display['sec1_acc_z'][i], l1_thr, l2_thr, l3_thr, l4_thr, 'pos', acc_fac))
+            int(str(1) + str(int(df_display['sec1_spd_bin'][i])) + str(severity_bins(df_display['sec1_acc_z'][i], l1_thr, l2_thr, l3_thr, l4_thr, 'pos', acc_fac)))
             df_display.iloc[i, df_display.columns.get_loc('sec2_code')] = 999
             df_display.iloc[i, df_display.columns.get_loc('sec3_code')] = 999
         elif df_display['type'][i]=='exd':
             df_display.iloc[i, df_display.columns.get_loc('sec1_code')] = \
-            str(2) + str(int(df_display['sec1_spd_bin'][i])) + str(severity_bins(df_display['sec1_dec_z'][i], l1_thr, l2_thr, l3_thr, l4_thr, 'neg', acc_fac))          
+            int(str(2) + str(int(df_display['sec1_spd_bin'][i])) + str(severity_bins(df_display['sec1_dec_z'][i], l1_thr, l2_thr, l3_thr, l4_thr, 'neg', acc_fac)))         
             df_display.iloc[i, df_display.columns.get_loc('sec2_code')] = 999
             df_display.iloc[i, df_display.columns.get_loc('sec3_code')] = 999
     
     df_display = df_display[(df_display['type']=='rtt') | (df_display['type']=='ltt') |(df_display['type']=='utn') |\
                             (df_display['type']=='lcr') | (df_display['type']=='lcl') |\
                             (((df_display['type']=='exa') | (df_display['type']=='exd')) & (df_display['score']!=100.))]
-    df_display = df_display.reset_index(drop=True)
-    
-    df_display = df_display[['uuid','type','prob','score','d','s_utc','e_utc',\
-                             'event_acc','s_spd','e_spd','s_crs','e_crs','s_lat','e_lat','s_long','e_long','s_alt','e_alt',\
-                             'sec1_s_spd','sec1_e_spd','sec1_code',\
-                             'sec2_s_spd','sec2_e_spd','sec2_code',\
-                             'sec3_s_spd','sec3_e_spd','sec3_code',\
+    df_display = df_display.reset_index(drop=True)    
+    df_display = df_display[['uuid','type','prob','score','d','s_utc','e_utc','event_acc','s_spd','e_spd','s_crs','e_crs',\
+                             's_lat','e_lat','s_long','e_long','s_alt','e_alt','anticipation','comfort','control',\
+                             'sec1_s_spd','sec1_e_spd','sec1_code','sec1_desc','sec1_diag','sec1_pct',\
+                             'sec2_s_spd','sec2_e_spd','sec2_code','sec2_desc','sec2_diag','sec2_pct',\
+                             'sec3_s_spd','sec3_e_spd','sec3_code','sec3_desc','sec3_diag','sec3_pct',\
                              'acc_1','acc_2','acc_3','acc_4','acc_5','acc_6','acc_7','acc_8','acc_9','acc_10',\
                              'acc_11','acc_12','acc_13','acc_14','acc_15','acc_16','acc_17','acc_18','acc_19','acc_20',\
                              'lfc_1','lfc_2','lfc_3','lfc_4','lfc_5','lfc_6','lfc_7','lfc_8','lfc_9','lfc_10',\
@@ -190,4 +312,13 @@ def display_track_info(df, l1_thr, l2_thr, l3_thr, l4_thr, acc_fac):
     return df_display
 
 
+def track_info_summary(df):
+    """ summarise track results
+    
+    :param df: results from display
+    :return: evaluation results as a summary
+    """    
+    res= df.copy(deep=True)
+    
+    return res
 
