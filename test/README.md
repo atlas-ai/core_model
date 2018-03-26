@@ -1,16 +1,8 @@
 # HOW TO RERUN OLD DATA
 
  1. Create a local environment so that you can run the pipeline locally. For this you need to create a local database 
- with the same schema as the one in production. You can use the following template for the measurements table:
-```
-CREATE TYPE status AS ENUM ('unprocessed', 'processing', 'processed');
-CREATE TABLE measurement (
-        id UUID DEFAULT gen_random_uuid() NOT NULL, 
-        data JSONB, 
-        status status DEFAULT 'unprocessed'::status, 
-        PRIMARY KEY (id)
-);
-```
+ with the same schema as the one in production. You can use the template `create-db-tables.sql` in the project root 
+ folder for the measurements tables.
 
 2. Create the trigger in your local database. This trigger is in charge of launching the algorithm once there is enough 
  unprocessed measurements.
@@ -68,7 +60,7 @@ COPY (
                (data->>'rot_rate_y')::numeric AS rot_rate_y,
                (data->>'rot_rate_z')::numeric AS rot_rate_z,
                data->>'name' AS name
-        FROM measurement
+        FROM measurement_processed
         WHERE data->>'track_uuid' IN ('YOUR UUID HERE')
         AND ((data->'name') IS NULL OR data->>'name' NOT LIKE 'replay')
         ORDER BY data->>'track_uuid', data->>'t'

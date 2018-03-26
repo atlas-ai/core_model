@@ -12,11 +12,6 @@ from work_flow import execute_algorithm, clean_results
 from pipeline_processor.utils import connect_db, get_detected_events_for_track, get_measurements
 
 
-class Status(Enum):
-    UNPROCESSED = 'unprocessed'
-    PROCESSING = 'processing'
-    PROCESSED = 'processed'
-
 
 class Events(Enum):
     TRACK_FINISHED = 'track_finished'
@@ -49,9 +44,8 @@ class Worker(Process):
             print('TIMESTAMP FROM:', data['oldest_unprocessed_timestamp'], 'TO:', payload_data['t'], 'DIFF:',
                   (payload_data['t'] - data['oldest_unprocessed_timestamp']))
 
-            # Query needed measurements data (add 15 seconds (15000 millis) more for overlap data)
-            df = get_measurements(timestamp_from=float(data['oldest_unprocessed_timestamp']) - 15,
-                                  timestamp_to=payload_data['t'], track_uuid=payload_data['track_uuid'],
+            # Query needed measurements data
+            df = get_measurements(timestamp_to=payload_data['t'], track_uuid=payload_data['track_uuid'],
                                   engine=self.engine)
 
             # Emulating Main.write_acc()
@@ -72,45 +66,36 @@ class Worker(Process):
 
                 if not df_sum.empty:
                     print('UNIQUE ALGORITHM RESULTS:', df_sum['type'].unique())
-                    # Check if data has been processed already
-                    query = """
-                            SELECT status
-                            FROM measurement
-                            WHERE (data->>'t')::numeric = '{timestamp_from}'::numeric
-                                AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
-                            LIMIT 1
-                        """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
-                                   track_uuid=payload_data['track_uuid'])
-                    df_processed = pd.read_sql_query(query, con=self.engine)
 
-                    # If data hasn't been processed yet then store the results
-                    if df_processed.empty or df_processed.ix[0]['status'] != Status.PROCESSED.value:
-                        df_sum.to_sql(name='detected_events', con=self.engine, if_exists='append', index=False)
-                        print('RESULTS SAVED')
                 else:
                     print('ALGORITHM DIDN\'T RETURN ANYTHING')
             except BaseException as e:
                 logging.exception("AN EXCEPTION OCURRED")
 
             # No matter if the algorithm returned any results or not, update measurements data and set it as processed
-            query = """
-                    UPDATE measurement
-                    SET status = '{new_status}'
-                    WHERE (data->>'t')::numeric >= '{timestamp_from}'::numeric
-                        AND (data->>'t')::numeric <= '{timestamp_to}'
-                        AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid
-                    """.format(timestamp_from=data['oldest_unprocessed_timestamp'],
-                       timestamp_to=payload_data['t'],
-                       track_uuid=payload_data['track_uuid'],
-                       new_status=Status.PROCESSED.value)
-
-            print("SET measurement processed TRACK_UUID {track_uuid} "
-                  "FROM {timestamp_from} TO {timestamp_to}".format(track_uuid=payload_data['track_uuid'],
-                                                                   timestamp_from=data['oldest_unprocessed_timestamp'],
-                                                                   timestamp_to=payload_data['t']))
-
             con = connect_db()
             cursor = con.cursor()
+
+            query = """
+                    INSERT INTO measurement_processed (data)
+                    SELECT data FROM measurement_incoming
+                    WHERE (data->>'t')::numeric <= '{timestamp_to}'
+                        AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid;
+            """.format(track_uuid=payload_data['track_uuid'], timestamp_to=float(payload_data['t'])-15)
+
+            cursor.execute(query)
+
+#            print("SET measurement processed TRACK_UUID {track_uuid} "
+#                  "FROM {timestamp_from} TO {timestamp_to}".format(track_uuid=payload_data['track_uuid'],
+#                                                                   timestamp_from=data['oldest_unprocessed_timestamp'],
+#                                                                   timestamp_to=payload_data['t']))
+
+            query = """
+                    DELETE FROM measurement_incoming
+                    WHERE (data->>'t')::numeric <= '{timestamp_to}'
+                          AND (data->>'track_uuid')::uuid = '{track_uuid}'::uuid;
+                    """.format(track_uuid=payload_data['track_uuid'], timestamp_to=float(payload_data['t'])-15)
+
             cursor.execute(query)
             con.commit()
 

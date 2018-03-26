@@ -20,7 +20,7 @@ def run(track_uuid, new_track_uuid, engine):
         previous_json = current_row.to_json(orient="records")
         previous_json = json.loads(previous_json)
 
-        insert_query = "INSERT INTO measurement (data) VALUES ('{dict_res}'::jsonb);".format(dict_res=str(json.dumps(previous_json))[1:-1])
+        insert_query = "INSERT INTO measurement_incoming (data) VALUES ('{dict_res}'::jsonb);".format(dict_res=str(json.dumps(previous_json))[1:-1])
         curs.execute(insert_query)
         conn.commit()
 
