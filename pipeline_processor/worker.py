@@ -8,7 +8,7 @@ from enum import Enum
 from multiprocessing import Process
 from sqlalchemy import create_engine
 from pipeline_processor import replay
-from work_flow import execute_algorithm, track_display
+from work_flow import execute_algorithm, track_summary
 from pipeline_processor.utils import connect_db, get_detected_events_for_track, get_measurements
 
 
@@ -119,7 +119,7 @@ class Worker(Process):
                 df_detected_events = get_detected_events_for_track(track_uuid=payload_data['track_uuid'],
                                                                    engine=self.engine)
 
-                df_cleaned_detected_events = track_display(df_eva=df_detected_events, code_sys=settings.CODE_FILE,
+                df_cleaned_detected_events = track_summary(df_eva=df_detected_events, code_sys=settings.CODE_FILE,
                               track_id=payload_data['track_uuid'], l1_thr=settings.L1_THR, l2_thr=settings.L2_THR,
                               l3_thr=settings.L3_THR, l4_thr=settings.L4_THR, acc_fac=settings.ACC_FAC)
 
