@@ -30,8 +30,7 @@ Process:
    This function will remove all duplicates created from the overlaps of 60-second intervals, and select information
    from the result table for display at the front end.
    
-The followings are the global parameters and file names for parameters.
-"""
+The followings are the global parameters and file names for parameters:
 
 samp_rate = 50
 n_smooth = 50
@@ -56,10 +55,11 @@ lcl_eva_file = 'lcl_evaluation_parameters.csv'
 acc_eva_file = 'acc_evaluation_parameters.csv'
 code_file = 'code_sys.xlsx'
 
+"""
 
 #0: Read all parameter files at the beginning
 def read_param(cali_file, evt_det_file, acc_det_file, rtt_eva_file, ltt_eva_file, utn_eva_file,\
-               lcr_eva_file, lcl_eva_file, acc_eva_file, code_file, device_id):
+               lcr_eva_file, lcl_eva_file, acc_eva_file, code_file):
     """ read all parameter files
 
     :param cali_file: file name for calibration matrix
@@ -75,7 +75,7 @@ def read_param(cali_file, evt_det_file, acc_det_file, rtt_eva_file, ltt_eva_file
     :param device_id: device id for calibration matrix
     :return: all parameters
     """
-    cali_param = rdp.read_cali_matrix(cali_file, device_id)
+    cali_param = rdp.read_cali_matrix(cali_file)
     evt_param = rdp.read_evt_detection_param(evt_det_file)
     acc_param = rdp.read_acc_detection_param(acc_det_file)
     param_rtt = rdp.read_evt_evaluation_param(rtt_eva_file)
@@ -103,7 +103,7 @@ def clean_data(raw_data):
 
 
 #2: Conduct frame conversion process
-def convert_frame(imu, gps, samp_rate, cali_param):
+def convert_frame(imu, gps, samp_rate, cali_param, device_id):
     """ read cleaned imu and gps data and conduct frame converion
 
     :param imu: dataframe for imu
@@ -112,7 +112,7 @@ def convert_frame(imu, gps, samp_rate, cali_param):
     """
     start = timeit.default_timer()
     imu_samp = cln.sampling_control(imu, samp_rate)    
-    imu_cal = cln.apply_calibration(imu_samp, cali_param)
+    imu_cal = cln.apply_calibration(imu_samp, cali_param, device_id)
     acc_imu = frm.car_acceleration(imu_cal['rot_rate_x'], imu_cal['rot_rate_y'], imu_cal['rot_rate_z'],\
                             imu_cal['user_a_x'], imu_cal['user_a_y'], imu_cal['user_a_z'],\
                             imu_cal['g_x'], imu_cal['g_y'], imu_cal['g_z'],\
@@ -205,7 +205,7 @@ def evaluation_model(acc_x, acc_x_gps, acc_y, rot_z, spd, crs, df_evt, df_acc, p
 #6 Execute main algorithms (encapsulate functions #1 to #5)
 def execute_algorithm(raw_data, cali_param, evt_param, acc_param, param_rtt, param_ltt, param_utn, param_lcr, param_lcl,\
                       param_acc, samp_rate, n_smooth, tn_thr, lc_thr, acc_thr, l1_thr, l2_thr, l3_thr, l4_thr, \
-                      device_id, track_id):
+                      track_id, device_id='iPad-001'):
     """ execute main algorithms 
     
     :param raw_data: measurements as raw data
@@ -227,13 +227,13 @@ def execute_algorithm(raw_data, cali_param, evt_param, acc_param, param_rtt, par
     :param l2_thr: l2 threshold for severity measurement
     :param l3_thr: l3 threshold for severity measurement
     :param l4_thr: l4 threshold for severity measurement
-    :param device_id: device id for calibration
-    :param track_id: track uuid    
+    :param track_id: track uuid 
+    :param device_id: device id for calibration       
     :return : detection and evaluation result table
-    """   
+    """  
     start = timeit.default_timer()
     imu, gps = clean_data(raw_data)
-    df_fc = convert_frame(imu, gps, samp_rate, cali_param)
+    df_fc = convert_frame(imu, gps, samp_rate, cali_param, device_id)
     acc_x, acc_y, rot_z, lat, long, alt, crs, spd, acc_x_gps, acc_y_gps = apply_filter(df_fc, n_smooth)
     df_evt = evt_detection_model(rot_z, lat, long, alt, crs, spd, evt_param, samp_rate, tn_thr, lc_thr)
     df_acc = acc_detection_model(acc_x, lat, long, alt, crs, spd, acc_param, samp_rate, acc_thr)
@@ -245,7 +245,7 @@ def execute_algorithm(raw_data, cali_param, evt_param, acc_param, param_rtt, par
 
 
 #6: Generate result table for display at front end
-def track_display(df_eva, code_sys, track_id, l1_thr, l2_thr, l3_thr, l4_thr, acc_fac):
+def track_summary(df_eva, code_sys, track_id, l1_thr, l2_thr, l3_thr, l4_thr, acc_fac):
     """ selection of data for display (run at the end of 60s intervals)
     
     :param df_eva: evaluation result table
@@ -261,9 +261,10 @@ def track_display(df_eva, code_sys, track_id, l1_thr, l2_thr, l3_thr, l4_thr, ac
     start = timeit.default_timer()     
     df_sum = dqu.remove_duplicates(df_eva, track_id)
     df_display = dqu.display_track_info(df_sum, code_sys, l1_thr, l2_thr, l3_thr, l4_thr, acc_fac)
+    df_track = dqu.track_info_summary(df_sum, df_display)
     stop = timeit.default_timer()
-    print ('Display Run Time: %s seconds ' % round((stop - start),2))         
-    return df_display
+    print ('Summary Run Time: %s seconds ' % round((stop - start),2))         
+    return df_sum, df_display, df_track
 
 
 

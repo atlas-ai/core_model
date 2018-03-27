@@ -106,7 +106,7 @@ def sampling_control(imu, samp_rate):
     return df
 
 
-def apply_calibration(imu, cali_param):
+def apply_calibration(imu, cali_param, device_id):
     """ apply calibration process to IMU data 
     
     Rotation rates and user accelerations should be centred around zero
@@ -117,11 +117,12 @@ def apply_calibration(imu, cali_param):
     :param cali_coef:  
     :return: calibrated imu dataframe
     """
-    df = imu.copy()
-    if cali_param.empty==False:
-        df['rot_rate_x']= imu['rot_rate_x'] - cali_param['rot_rate_x'][0]
-        df['rot_rate_y']= imu['rot_rate_y'] - cali_param['rot_rate_y'][0]
-        df['rot_rate_z']= imu['rot_rate_z'] - cali_param['rot_rate_z'][0]
+    df = imu.copy(deep=True)
+    cali_param = cali_param[cali_param['device_id']==device_id]
+    if cali_param.empty==False:    
+        df['rot_rate_x'] = imu['rot_rate_x'] - cali_param['rot_rate_x'][0]
+        df['rot_rate_y'] = imu['rot_rate_y'] - cali_param['rot_rate_y'][0]
+        df['rot_rate_z'] = imu['rot_rate_z'] - cali_param['rot_rate_z'][0]
         #Analysis shows that acceleration is not affected by drifts
         #df['user_a_x']= imu['user_a_x'] - cali_param['user_a_x'][0]
         #df['user_a_y']= imu['user_a_y'] - cali_param['user_a_y'][0]

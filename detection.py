@@ -653,13 +653,16 @@ def ex_acc_expansion(acc_x, lat, long, alt, crs, spd, df_acc, samp_rate):
                 df_acc.iloc[i, df_acc.columns.get_loc('e_crs')] = e_crs        
                 duration = (e_utc-s_utc)/np.timedelta64(1, 's')
                 df_acc.iloc[i, df_acc.columns.get_loc('d')] = duration
+                df_acc.iloc[i, df_acc.columns.get_loc('event_acc')] = (e_spd-s_spd)/3.6/duration/9.8
                 if e_spd>=s_spd:
                     df_acc.iloc[i, df_acc.columns.get_loc('type')] = 'exa'
                 else:
-                    df_acc.iloc[i, df_acc.columns.get_loc('type')] = 'exd'
-                df_acc.iloc[i, df_acc.columns.get_loc('event_acc')] = (e_spd-s_spd)/3.6/duration/9.8
-
-        df_acc['prob']=1.0
+                    df_acc.iloc[i, df_acc.columns.get_loc('type')] = 'exd'                
+                if df_acc['event_acc'][i]>=0:
+                    df_acc.iloc[i, df_acc.columns.get_loc('prob')] = df_acc['event_acc'][i]
+                else:
+                    df_acc.iloc[i, df_acc.columns.get_loc('prob')] = -1.*df_acc['event_acc'][i]
+                    
         df_acc = df_acc[df_acc['d']>0]
         
     return df_acc

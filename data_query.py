@@ -146,11 +146,10 @@ def evt_metrics(sec_code):
     :return cont: control, which measures the direction of lateral force w.r.t events
     """
     evt = int(str(sec_code[0])[0])
-    anti = 50
-    comf = 50
-    cont = 50
+    anti = 45.
+    comf = 45.
+    cont = 45.
     if evt==1:
-
         for i in range(3):
             if int(str(sec_code[i])[2])>=4:
                 anti = anti - int(str(sec_code[i])[2])
@@ -160,7 +159,7 @@ def evt_metrics(sec_code):
                 comf = comf - int(str(sec_code[i])[4])
             if int(str(sec_code[i])[6])>=3:
                 comf = comf - int(str(sec_code[i])[6])   
-            if int(str(sec_code[i])[5])>0:
+            if int(str(sec_code[i])[5])>1:
                 cont = cont - int(str(sec_code[i])[5])
             if int(str(sec_code[i])[2])<=2:
                 if int(str(sec_code[i])[6])>=3:
@@ -175,60 +174,60 @@ def evt_metrics(sec_code):
                 comf = comf - int(str(sec_code[i])[4])
             if int(str(sec_code[i])[5])>=3:
                 comf = comf - int(str(sec_code[i])[5])   
-            if int(str(sec_code[i])[6])>0:
+            if int(str(sec_code[i])[6])>1:
                 cont = cont - int(str(sec_code[i])[6])
             if int(str(sec_code[i])[2])<=2:
                 if int(str(sec_code[i])[5])>=3:
                     cont = cont - int(str(sec_code[i])[5])  
     elif evt==4:
         if int(str(sec_code[0])[4])>=3:
-            anti = anti - int(str(sec_code[0])[4])
+            anti = anti - int(str(sec_code[0])[4])*2
         if int(str(sec_code[0])[4])>=3:
             comf = comf - int(str(sec_code[0])[4])
         if int(str(sec_code[0])[6])>=3:
             comf = comf - int(str(sec_code[0])[6])   
-        if int(str(sec_code[0])[5])>0:
+        if int(str(sec_code[0])[5])>1:
             cont = cont - int(str(sec_code[0])[5])
         if int(str(sec_code[0])[2])<=2:
             if int(str(sec_code[0])[6])>=3:
                 cont = cont - int(str(sec_code[0])[6]) 
-        if int(str(sec_code[1])[4])>=3:
+        if int(str(sec_code[2])[4])>=3:
             anti = anti - int(str(sec_code[0])[4])
-        if int(str(sec_code[1])[4])>=3:
+        if int(str(sec_code[2])[4])>=3:
             comf = comf - int(str(sec_code[1])[4])
-        if int(str(sec_code[1])[5])>=3:
+        if int(str(sec_code[2])[5])>=3:
             comf = comf - int(str(sec_code[1])[5])   
-        if int(str(sec_code[1])[6])>0:
+        if int(str(sec_code[2])[6])>1:
             cont = cont - int(str(sec_code[1])[6])
-        if int(str(sec_code[1])[2])<=2:
+        if int(str(sec_code[2])[2])<=2:
             if int(str(sec_code[1])[5])>=3:
                 cont = cont - int(str(sec_code[1])[5])        
     elif evt==5:
         if int(str(sec_code[0])[4])>=3:
-            anti = anti - int(str(sec_code[0])[4])
+            anti = anti - int(str(sec_code[0])[4])*2
         if int(str(sec_code[0])[4])>=3:
             comf = comf - int(str(sec_code[0])[4])
         if int(str(sec_code[0])[5])>=3:
             comf = comf - int(str(sec_code[0])[5])   
-        if int(str(sec_code[0])[6])>0:
+        if int(str(sec_code[0])[6])>1:
             cont = cont - int(str(sec_code[0])[6])
         if int(str(sec_code[0])[2])<=2:
             if int(str(sec_code[0])[5])>=3:
                 cont = cont - int(str(sec_code[0])[5]) 
-        if int(str(sec_code[1])[4])>=3:
+        if int(str(sec_code[2])[4])>=3:
             anti = anti - int(str(sec_code[0])[4])
-        if int(str(sec_code[1])[4])>=3:
+        if int(str(sec_code[2])[4])>=3:
             comf = comf - int(str(sec_code[1])[4])
-        if int(str(sec_code[1])[6])>=3:
+        if int(str(sec_code[2])[6])>=3:
             comf = comf - int(str(sec_code[1])[6])   
-        if int(str(sec_code[1])[5])>0:
+        if int(str(sec_code[2])[5])>1:
             cont = cont - int(str(sec_code[1])[5])
-        if int(str(sec_code[1])[2])<=2:
+        if int(str(sec_code[2])[2])<=2:
             if int(str(sec_code[1])[6])>=3:
                 cont = cont - int(str(sec_code[1])[6])         
-    anti = int(anti/50*5)
-    comf = int(comf/50*5)
-    cont = int(cont/50*5)    
+    anti = round(anti/45*5,1)
+    comf = round(comf/45*5,1)
+    cont = round(cont/45*5,1)    
     return anti, comf, cont
 
 
@@ -312,13 +311,126 @@ def display_track_info(df, code_sys, l1_thr, l2_thr, l3_thr, l4_thr, acc_fac):
     return df_display
 
 
-def track_info_summary(df):
+def focus_algo(df_sum, df_display):
+    """focus measures the attention that drivers pay while driving
+    
+    :param df_sum: cleaned results
+    :param df_display: displayed results
+    :return: score for focus
+    """
+    exd_num = df_sum[df_sum['type']=='exd'].shape[0]
+    focus_num = df_display[df_display['type']=='exd'].shape[0]
+    if focus_num!=0:
+        tot_score = 100. - exd_num/focus_num*100.
+    else:
+        tot_score = 100.
+    tot_score = round(tot_score/20,1)
+    return tot_score
+
+
+def efficiency_algo(df_sum):
+    """efficiency measures the intensity of acceleration
+    
+    :param df_sum: cleaned results
+    :return: score for efficiency
+    """ 
+    tot_score=100.
+    for i in range(3):
+        acc_score = df_sum['sec'+str(i+1)+'_acc_z'].where(df_sum['sec'+str(i+1)+'_acc_z']>3).sum()\
+        /(df_sum['sec'+str(i+1)+'_acc_z'].count()*3)
+        dec_score = df_sum['sec'+str(i+1)+'_dec_z'].where(df_sum['sec'+str(i+1)+'_dec_z']<-3).sum()\
+        /(df_sum['sec'+str(i+1)+'_dec_z'].count()*-3)
+        if acc_score>0: 
+            tot_score = tot_score - acc_score*50. 
+        if dec_score>0:   
+            tot_score = tot_score - dec_score*50.  
+    tot_score = round(tot_score/20,1)
+    return tot_score
+
+
+def anticipation_algo(df_sum):
+    """anticipation measures whether drivers have tailgating behaviour 
+        
+    :param df_sum: cleaned results
+    :return: score for anticipation
+    """
+    df_tg = df_sum[(df_sum['type']=='exa')|(df_sum['type']=='exd')].copy(deep=True)
+    df_tg.reset_index(inplace=True)
+    dtlen = df_tg.shape[0]
+    tg_score = (dtlen-1)*20
+    tg_label = np.zeros(dtlen)
+    tg_dt = df_tg['s_utc'].diff().bfill()/np.timedelta64(1, 's')
+    for i in range(1, dtlen):
+        if tg_dt[i]<=15.:
+            if (df_tg['type'][i]=='exa') and (df_tg['type'][i-1]=='exd'):
+                tg_label[i] = 20
+            elif (df_tg['type'][i]=='exd') and (df_tg['type'][i-1]=='exa'):
+                tg_label[i] = 20
+            elif (df_tg['type'][i]=='exd') and (df_tg['type'][i-1]=='exd'):
+                tg_label[i] = 15
+            elif (df_tg['type'][i]=='exa') and (df_tg['type'][i-1]=='exa'):
+                tg_label[i] = 10
+    tot_score = 100 - tg_label.sum()/tg_score*100
+    tot_score = round(tot_score/20,1)
+    return tot_score
+
+
+def control_algo(df_display):
+    """control measures whether drivers have full control of the vehicles
+    
+    :param df_display: displayed results
+    :return: score for control
+    """
+    tot_score = (df_display['control'].mean()+ df_display['comfort'].mean())*10
+    tot_score = round(tot_score/20,1)
+    return tot_score
+
+
+def legality_algo():
+    """legality measures breaches of traffic laws
+    
+    dummy algo for now, place holder
+    """
+    tot_score = 100
+    tot_score = round(tot_score/20,1)
+    return tot_score
+
+
+def track_info_summary(df_sum, df_display):
     """ summarise track results
     
-    :param df: results from display
-    :return: evaluation results as a summary
+    :param df_sum: results from cleaned db
+    :param df_display: results from displayed db
+    :return: track summary table in one line
     """    
-    res= df.copy(deep=True)
+    res = pd.DataFrame(np.nan, index=np.arange(1), columns=['uuid','s_utc','e_utc','dur','dist',\
+                       'ave_spd','no_rtt','no_ltt','no_utn','no_lcr','no_lcl','no_exa','no_exd',\
+                       'rtt_score','ltt_score','utn_score','lcr_score','lcl_score','exa_score','exd_score',\
+                       'performance','focus','efficiency','anticipation', 'control','legality'])
+    res.iloc[0, res.columns.get_loc('uuid')] = df_sum['uuid'][0]
+    res.iloc[0, res.columns.get_loc('no_rtt')] = df_display['type'].where(df_display['type']=='rtt').count()
+    res.iloc[0, res.columns.get_loc('rtt_score')] = round(df_display['score'].where(df_display['type']=='rtt').mean()/20,1)
+    res.iloc[0, res.columns.get_loc('no_ltt')] = df_display['type'].where(df_display['type']=='ltt').count()
+    res.iloc[0, res.columns.get_loc('ltt_score')] = round(df_display['score'].where(df_display['type']=='ltt').mean()/20,1)
+    res.iloc[0, res.columns.get_loc('no_utn')] = df_display['type'].where(df_display['type']=='utn').count()
+    res.iloc[0, res.columns.get_loc('utn_score')] = round(df_display['score'].where(df_display['type']=='utn').mean()/20,1)
+    res.iloc[0, res.columns.get_loc('no_lcr')] = df_display['type'].where(df_display['type']=='lcr').count()
+    res.iloc[0, res.columns.get_loc('lcr_score')] = round(df_display['score'].where(df_display['type']=='lcr').mean()/20,1)
+    res.iloc[0, res.columns.get_loc('no_lcl')] = df_display['type'].where(df_display['type']=='lcl').count()
+    res.iloc[0, res.columns.get_loc('lcl_score')] = round(df_display['score'].where(df_display['type']=='lcl').mean()/20,1)
+    res.iloc[0, res.columns.get_loc('no_exa')] = df_display['type'].where(df_display['type']=='exa').count()
+    res.iloc[0, res.columns.get_loc('exa_score')] = round(df_display['score'].where(df_display['type']=='exa').mean()/20,1)
+    res.iloc[0, res.columns.get_loc('no_exd')] = df_display['type'].where(df_display['type']=='exd').count()
+    res.iloc[0, res.columns.get_loc('exd_score')] = round(df_display['score'].where(df_display['type']=='exd').mean()/20,1)
+    res.iloc[0, res.columns.get_loc('focus')] = focus_algo(df_sum, df_display)
+    res.iloc[0, res.columns.get_loc('efficiency')] = efficiency_algo(df_sum)
+    res.iloc[0, res.columns.get_loc('anticipation')] = anticipation_algo(df_sum)
+    res.iloc[0, res.columns.get_loc('control')] = control_algo(df_display)
+    res.iloc[0, res.columns.get_loc('legality')] = legality_algo()
+    overall_performance = round((df_display['score'].mean()/20 + res['focus'][0] + res['efficiency'][0] \
+                                 + res['anticipation'][0] + res['control'][0] + res['legality'][0])/6., 1)
+    res.iloc[0, res.columns.get_loc('performance')] = overall_performance
     
     return res
+
 
