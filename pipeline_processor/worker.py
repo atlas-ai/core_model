@@ -8,7 +8,7 @@ from enum import Enum
 from multiprocessing import Process
 from sqlalchemy import create_engine
 from pipeline_processor import replay
-from work_flow import execute_algorithm, clean_results
+from work_flow import execute_algorithm, track_display
 from pipeline_processor.utils import connect_db, get_detected_events_for_track, get_measurements
 
 
@@ -57,22 +57,17 @@ class Worker(Process):
             # Emulating Main.write_acc()
             df_data = df['data'].apply(lambda x: pd.Series(x))
 
-            gps_data = df_data[['t', 'lat', 'long', 'alt', 'course', 'speed']]
-            imu_data = df_data[['t', 'att_pitch', 'att_roll', 'att_yaw', 'rot_rate_x', 'rot_rate_y', 'rot_rate_z',
-                                'g_x', 'g_y', 'g_z', 'user_a_x', 'user_a_y', 'user_a_z', 'm_x', 'm_y', 'm_z']]
-
-            gps = fin.gps_data(gps_data)
-            imu = fin.imu_data(imu_data)
-
             try:
-                df_sum = execute_algorithm(raw_data=df_data, cali_param=settings.CALI_FILE, evt_param=settings.EVT_DET_FILE,
-                                           acc_param=settings.ACC_DET_FILE, param_rtt=settings.RTT_EVA_FILE,
-                                           param_ltt=settings.LTT_EVA_FILE, param_utn=settings.UTN_EVA_FILE,
-                                           param_lcr=settings.LCR_EVA_FILE, param_lcl=settings.LCL_EVA_FILE,
-                                           param_acc=settings.ACC_EVA_FILE, samp_rate=settings.SAMP_RATE, n_smooth=settings.N_SMOOTH,
+                df_sum = execute_algorithm(raw_data=df_data, cali_param=settings.CALI_FILE,
+                                           evt_param=settings.EVT_DET_FILE, acc_param=settings.ACC_DET_FILE,
+                                           param_rtt=settings.RTT_EVA_FILE, param_ltt=settings.LTT_EVA_FILE,
+                                           param_utn=settings.UTN_EVA_FILE, param_lcr=settings.LCR_EVA_FILE,
+                                           param_lcl=settings.LCL_EVA_FILE, param_acc=settings.ACC_EVA_FILE,
+                                           samp_rate=settings.SAMP_RATE, n_smooth=settings.N_SMOOTH,
                                            tn_thr=settings.TN_THR, lc_thr=settings.LC_THR, acc_thr=settings.ACC_THR,
                                            l1_thr=settings.L1_THR, l2_thr=settings.L2_THR, l3_thr=settings.L3_THR,
-                                           l4_thr=settings.L4_THR, device_id=settings.DEVICE_ID, track_id=payload_data['track_uuid'])
+                                           l4_thr=settings.L4_THR, device_id=settings.DEVICE_ID,
+                                           track_id=payload_data['track_uuid'])
 
                 if not df_sum.empty:
                     print('UNIQUE ALGORITHM RESULTS:', df_sum['type'].unique())
@@ -123,8 +118,10 @@ class Worker(Process):
                 print('track_finished EVENT RECEIVED')
                 df_detected_events = get_detected_events_for_track(track_uuid=payload_data['track_uuid'],
                                                                    engine=self.engine)
-                df_cleaned_detected_events = clean_results(track_uuid=payload_data['track_uuid'],
-                                                           df_detected_events=df_detected_events)
+
+                df_cleaned_detected_events = track_display(df_eva=df_detected_events, code_sys=settings.CODE_FILE,
+                              track_id=payload_data['track_uuid'], l1_thr=settings.L1_THR, l2_thr=settings.L2_THR,
+                              l3_thr=settings.L3_THR, l4_thr=settings.L4_THR, acc_fac=settings.ACC_FAC)
 
                 df_cleaned_detected_events.to_sql(name='cleaned_events', con=self.engine, if_exists='append', index=False)
                 print('CLEANED EVENTS SAVED, UUID: {0}'.format(payload_data['track_uuid']))
