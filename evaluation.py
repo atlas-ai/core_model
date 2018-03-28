@@ -27,50 +27,50 @@ def eva_resampling(df_evt, df_acc, acc_x, acc_x_gps, acc_y, rot_z, spd, crs, sam
     df_res = df_res.sort_values('s_utc', ascending=True) 
     df_res = df_res.reset_index(drop=True)
     
-    if df_res.empty==False:
-        fac = 0.5   
-        acc_e = np.zeros(20)
-        spd_e = np.zeros(20)    
-        t = np.zeros(20)
-        acc_x_res = np.zeros(20)
-        acc_x_gps_res = np.zeros(20)
-        spd_res = np.zeros(20)
-        acc_y_res = np.zeros(20)
-        crs_res = np.zeros(20)
-        rot_res = np.zeros(20)
+    #if df_res.empty==False:
+    fac = 0.5   
+    acc_e = np.zeros(20)
+    spd_e = np.zeros(20)    
+    t = np.zeros(20)
+    acc_x_res = np.zeros(20)
+    acc_x_gps_res = np.zeros(20)
+    spd_res = np.zeros(20)
+    acc_y_res = np.zeros(20)
+    crs_res = np.zeros(20)
+    rot_res = np.zeros(20)
             
-        for i in range (20): 
-            df_res['spd_'+str(i+1)]=np.NaN
-            df_res['acc_'+str(i+1)]=np.NaN
-            df_res['lfc_'+str(i+1)]=np.NaN
-            df_res['crs_'+str(i+1)]=np.NaN
-            df_res['rot_'+str(i+1)]=np.NaN
+    for i in range (20): 
+        df_res['spd_'+str(i+1)]=np.NaN
+        df_res['acc_'+str(i+1)]=np.NaN
+        df_res['lfc_'+str(i+1)]=np.NaN
+        df_res['crs_'+str(i+1)]=np.NaN
+        df_res['rot_'+str(i+1)]=np.NaN
         
-        dt_len = df_res.shape[0] 
-        for i in range(dt_len):        
-            beg_idx = acc_x.index.searchsorted(df_res['s_utc'][i]) 
-            end_idx = acc_x.index.searchsorted(df_res['e_utc'][i])
-            stepSize = (end_idx-beg_idx+1)/20
+    dt_len = df_res.shape[0] 
+    for i in range(dt_len):        
+        beg_idx = acc_x.index.searchsorted(df_res['s_utc'][i]) 
+        end_idx = acc_x.index.searchsorted(df_res['e_utc'][i])
+        stepSize = (end_idx-beg_idx+1)/20
         
-            for j in range (20):
-                t[j] = acc_x.index[int(np.floor(beg_idx+j*stepSize))].value
-                acc_x_res[j] = acc_x[int(np.floor(beg_idx+j*stepSize))]
-                acc_x_gps_res[j] = acc_x_gps[int(np.floor(beg_idx+j*stepSize))]
-                spd_res[j] = spd[int(np.floor(beg_idx+j*stepSize))]
-                acc_y_res[j] = acc_y[int(np.floor(beg_idx+j*stepSize))]
-                crs_res[j] = crs[int(np.floor(beg_idx+j*stepSize))]
-                rot_res[j] = rot_z[int(np.floor(beg_idx+j*stepSize))]
+        for j in range (20):
+            t[j] = acc_x.index[int(np.floor(beg_idx+j*stepSize))].value
+            acc_x_res[j] = acc_x[int(np.floor(beg_idx+j*stepSize))]
+            acc_x_gps_res[j] = acc_x_gps[int(np.floor(beg_idx+j*stepSize))]
+            spd_res[j] = spd[int(np.floor(beg_idx+j*stepSize))]
+            acc_y_res[j] = acc_y[int(np.floor(beg_idx+j*stepSize))]
+            crs_res[j] = crs[int(np.floor(beg_idx+j*stepSize))]
+            rot_res[j] = rot_z[int(np.floor(beg_idx+j*stepSize))]
             
-            delta_t = pd.Series(t).diff().bfill()/1000000000        
-            acc_e = (1-fac)*acc_x_res + fac*acc_x_gps_res
-            spd_e = (acc_e*g*delta_t).cumsum()*3.6 + df_res['s_spd'][i]  
+        delta_t = pd.Series(t).diff().bfill()/1000000000        
+        acc_e = (1-fac)*acc_x_res + fac*acc_x_gps_res
+        spd_e = (acc_e*g*delta_t).cumsum()*3.6 + df_res['s_spd'][i]  
             
-            for j in range(20):
-                df_res.iloc[i, df_res.columns.get_loc('spd_'+str(j+1))] = spd_e[j]
-                df_res.iloc[i, df_res.columns.get_loc('acc_'+str(j+1))] = acc_e[j]
-                df_res.iloc[i, df_res.columns.get_loc('lfc_'+str(j+1))] = acc_y_res[j]
-                df_res.iloc[i, df_res.columns.get_loc('crs_'+str(j+1))] = crs_res[j]
-                df_res.iloc[i, df_res.columns.get_loc('rot_'+str(j+1))] = rot_res[j]
+        for j in range(20):
+            df_res.iloc[i, df_res.columns.get_loc('spd_'+str(j+1))] = spd_e[j]
+            df_res.iloc[i, df_res.columns.get_loc('acc_'+str(j+1))] = acc_e[j]
+            df_res.iloc[i, df_res.columns.get_loc('lfc_'+str(j+1))] = acc_y_res[j]
+            df_res.iloc[i, df_res.columns.get_loc('crs_'+str(j+1))] = crs_res[j]
+            df_res.iloc[i, df_res.columns.get_loc('rot_'+str(j+1))] = rot_res[j]
  
     return df_res
 

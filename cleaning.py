@@ -20,7 +20,6 @@ def gps_data(df):
     :return: cleaned dataframe
     """
     gps = df[['t','lat','long','alt','speed','course']].copy()
-    gps['course'] = np.radians(gps['course'])
     gps = gps.sort_values(by=['t'])
     gps = gps.reset_index(drop=True)  
     gps.index = pd.to_datetime(gps['t'], unit='s')
@@ -28,6 +27,7 @@ def gps_data(df):
     gps = gps[~gps.isin(['NaN']).any(axis=1)]  
     gps = gps[~gps.isin([0.0]).any(axis=1)] 
     gps = gps[~gps.index.duplicated()]
+    gps['course'] = np.radians(gps['course'])
     
     return gps
 
