@@ -124,9 +124,15 @@ class Worker(Process):
                 df_detected_events = get_detected_events_for_track(track_uuid=payload_data['track_uuid'],
                                                                    engine=self.engine)
 
-                df_cleaned_detected_events = track_summary(df_eva=df_detected_events, code_sys=settings.CODE_FILE,
+                df_cleaned_detected_events, df_display, df_track = track_summary(df_eva=df_detected_events, code_sys=settings.CODE_FILE,
                               track_id=payload_data['track_uuid'], l1_thr=settings.L1_THR, l2_thr=settings.L2_THR,
                               l3_thr=settings.L3_THR, l4_thr=settings.L4_THR, acc_fac=settings.ACC_FAC)
 
                 df_cleaned_detected_events.to_sql(name='cleaned_events', con=self.engine, if_exists='append', index=False)
                 print('CLEANED EVENTS SAVED, UUID: {0}'.format(payload_data['track_uuid']))
+
+                df_display.to_sql(name='display_results', con=self.engine, if_exists='append', index=False)
+                print('DISPLAY RESULTS SAVED, UUID: {0}'.format(payload_data['track_uuid']))
+
+                df_track.to_sql(name='track_summary', con=self.engine, if_exists='append', index=False)
+                print('TRACK SUMMARY SAVED, UUID: {0}'.format(payload_data['track_uuid']))
