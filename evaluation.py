@@ -27,7 +27,6 @@ def eva_resampling(df_evt, df_acc, acc_x, acc_x_gps, acc_y, rot_z, spd, crs, sam
     df_res = df_res.sort_values('s_utc', ascending=True) 
     df_res = df_res.reset_index(drop=True)
     
-    #if df_res.empty==False:
     fac = 0.5   
     acc_e = np.zeros(20)
     spd_e = np.zeros(20)    
@@ -322,40 +321,41 @@ def evt_n_acc_evaluation(df_res, param_rtt, param_ltt, param_utn, param_lcr, par
         df_eva['sec'+str(i+1)+'_lat_rt_z']=np.NaN
         
     dt_len = df_eva.shape[0]
-    for i in range(dt_len):        
-        evt_type = df_eva['type'][i]
-        if (evt_type=='rtt') or (evt_type=='ltt') or (evt_type=='utn') or (evt_type=='lcr') or (evt_type=='lcl'):            
-            sec_s_spd, sec_e_spd, spd_bin, acc_z, dec_z, lfc_lt_z, lfc_rt_z = \
-            evt_sec_zscore(df_res.iloc[i], param_rtt, param_ltt, param_utn, param_lcr, param_lcl, evt_type, samp_rate)            
-            tot_score = evt_score_algo(acc_z, dec_z, lfc_lt_z, lfc_rt_z, l1_thr, l2_thr, l3_thr, l4_thr)
-            df_eva.iloc[i, df_eva.columns.get_loc('score')] = tot_score
+    if dt_len!=0:
+        for i in range(dt_len):        
+            evt_type = df_eva['type'][i]
+            if (evt_type=='rtt') or (evt_type=='ltt') or (evt_type=='utn') or (evt_type=='lcr') or (evt_type=='lcl'):            
+                sec_s_spd, sec_e_spd, spd_bin, acc_z, dec_z, lfc_lt_z, lfc_rt_z = \
+                evt_sec_zscore(df_res.iloc[i], param_rtt, param_ltt, param_utn, param_lcr, param_lcl, evt_type, samp_rate)            
+                tot_score = evt_score_algo(acc_z, dec_z, lfc_lt_z, lfc_rt_z, l1_thr, l2_thr, l3_thr, l4_thr)
+                df_eva.iloc[i, df_eva.columns.get_loc('score')] = tot_score
             
-            if (evt_type=='rtt') or (evt_type=='ltt') or (evt_type=='utn'):
-                dt_idx = [0, 1, 2]
-                sec_idx = [1, 2, 3]
-            elif (evt_type=='lcr') or (evt_type=='lcl'):
-                dt_idx = [0, 1]
-                sec_idx = [1, 3]
-            for j in dt_idx:
-                df_eva.iloc[i, df_eva.columns.get_loc('sec'+str(sec_idx[j])+'_s_spd')] = sec_s_spd[j]
-                df_eva.iloc[i, df_eva.columns.get_loc('sec'+str(sec_idx[j])+'_e_spd')] = sec_e_spd[j]
-                df_eva.iloc[i, df_eva.columns.get_loc('sec'+str(sec_idx[j])+'_spd_bin')] = spd_bin[j]
-                if sec_e_spd[j]>=sec_s_spd[j]:
-                    df_eva.iloc[i, df_eva.columns.get_loc('sec'+str(sec_idx[j])+'_acc_z')] = acc_z[j]
+                if (evt_type=='rtt') or (evt_type=='ltt') or (evt_type=='utn'):
+                    dt_idx = [0, 1, 2]
+                    sec_idx = [1, 2, 3]
+                elif (evt_type=='lcr') or (evt_type=='lcl'):
+                    dt_idx = [0, 1]
+                    sec_idx = [1, 3]
+                for j in dt_idx:
+                    df_eva.iloc[i, df_eva.columns.get_loc('sec'+str(sec_idx[j])+'_s_spd')] = sec_s_spd[j]
+                    df_eva.iloc[i, df_eva.columns.get_loc('sec'+str(sec_idx[j])+'_e_spd')] = sec_e_spd[j]
+                    df_eva.iloc[i, df_eva.columns.get_loc('sec'+str(sec_idx[j])+'_spd_bin')] = spd_bin[j]
+                    if sec_e_spd[j]>=sec_s_spd[j]:
+                        df_eva.iloc[i, df_eva.columns.get_loc('sec'+str(sec_idx[j])+'_acc_z')] = acc_z[j]
+                    else:
+                        df_eva.iloc[i, df_eva.columns.get_loc('sec'+str(sec_idx[j])+'_dec_z')] = dec_z[j]
+                        df_eva.iloc[i, df_eva.columns.get_loc('sec'+str(sec_idx[j])+'_lat_lt_z')] = lfc_lt_z[j]
+                        df_eva.iloc[i, df_eva.columns.get_loc('sec'+str(sec_idx[j])+'_lat_rt_z')] = lfc_rt_z[j] 
+            elif (evt_type=='exa') or (evt_type=='exd'):
+                tot_score, acc_zscore, spd_bin, s_spd, e_spd = ex_acc_score_algo(df_res.iloc[i], param_acc, evt_type)
+                df_eva.iloc[i, df_eva.columns.get_loc('sec1_s_spd')] = s_spd
+                df_eva.iloc[i, df_eva.columns.get_loc('sec1_e_spd')] = e_spd
+                df_eva.iloc[i, df_eva.columns.get_loc('sec1_spd_bin')] = spd_bin
+                df_eva.iloc[i, df_eva.columns.get_loc('score')] = tot_score
+                if evt_type=='exa':
+                    df_eva.iloc[i, df_eva.columns.get_loc('sec1_acc_z')] = acc_zscore
                 else:
-                    df_eva.iloc[i, df_eva.columns.get_loc('sec'+str(sec_idx[j])+'_dec_z')] = dec_z[j]
-                df_eva.iloc[i, df_eva.columns.get_loc('sec'+str(sec_idx[j])+'_lat_lt_z')] = lfc_lt_z[j]
-                df_eva.iloc[i, df_eva.columns.get_loc('sec'+str(sec_idx[j])+'_lat_rt_z')] = lfc_rt_z[j] 
-        elif (evt_type=='exa') or (evt_type=='exd'):
-            tot_score, acc_zscore, spd_bin, s_spd, e_spd = ex_acc_score_algo(df_res.iloc[i], param_acc, evt_type)
-            df_eva.iloc[i, df_eva.columns.get_loc('sec1_s_spd')] = s_spd
-            df_eva.iloc[i, df_eva.columns.get_loc('sec1_e_spd')] = e_spd
-            df_eva.iloc[i, df_eva.columns.get_loc('sec1_spd_bin')] = spd_bin
-            df_eva.iloc[i, df_eva.columns.get_loc('score')] = tot_score
-            if evt_type=='exa':
-                df_eva.iloc[i, df_eva.columns.get_loc('sec1_acc_z')] = acc_zscore
-            else:
-                df_eva.iloc[i, df_eva.columns.get_loc('sec1_dec_z')] = acc_zscore
+                    df_eva.iloc[i, df_eva.columns.get_loc('sec1_dec_z')] = acc_zscore
                         
     df_eva = df_eva[['uuid','type','prob','score','d','s_utc','e_utc',\
                      'event_acc','s_spd','e_spd','s_crs','e_crs','s_lat','e_lat','s_long','e_long','s_alt','e_alt',\

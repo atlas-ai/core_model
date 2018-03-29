@@ -293,10 +293,12 @@ def display_track_info(df, code_sys, l1_thr, l2_thr, l3_thr, l4_thr, acc_fac):
             df_display.iloc[i, df_display.columns.get_loc('sec2_code')] = 999
             df_display.iloc[i, df_display.columns.get_loc('sec3_code')] = 999
     
-    df_display = df_display[(df_display['type']=='rtt') | (df_display['type']=='ltt') |(df_display['type']=='utn') |\
+    if df_display.empty==False:
+        df_display = df_display[(df_display['type']=='rtt') | (df_display['type']=='ltt') |(df_display['type']=='utn') |\
                             (df_display['type']=='lcr') | (df_display['type']=='lcl') |\
                             (((df_display['type']=='exa') | (df_display['type']=='exd')) & (df_display['score']!=100.))]
-    df_display = df_display.reset_index(drop=True)    
+        df_display = df_display.reset_index(drop=True)    
+        
     df_display = df_display[['uuid','type','prob','score','d','s_utc','e_utc','event_acc','s_spd','e_spd','s_crs','e_crs',\
                              's_lat','e_lat','s_long','e_long','s_alt','e_alt','anticipation','comfort','control',\
                              'sec1_s_spd','sec1_e_spd','sec1_code','sec1_desc','sec1_diag','sec1_pct',\
@@ -321,7 +323,7 @@ def focus_algo(df_sum, df_display):
     exd_num = df_sum[df_sum['type']=='exd'].shape[0]
     focus_num = df_display[df_display['type']=='exd'].shape[0]
     if focus_num!=0:
-        tot_score = 100. - exd_num/focus_num*100.
+        tot_score = 100. - focus_num/exd_num*100.
     else:
         tot_score = 100.
     tot_score = round(tot_score/20,1)
@@ -407,30 +409,31 @@ def track_info_summary(df_sum, df_display):
                        'ave_spd','no_rtt','no_ltt','no_utn','no_lcr','no_lcl','no_exa','no_exd',\
                        'rtt_score','ltt_score','utn_score','lcr_score','lcl_score','exa_score','exd_score',\
                        'performance','focus','efficiency','anticipation', 'control','legality'])
-    res.iloc[0, res.columns.get_loc('uuid')] = df_sum['uuid'][0]
-    res.iloc[0, res.columns.get_loc('no_rtt')] = df_display['type'].where(df_display['type']=='rtt').count()
-    res.iloc[0, res.columns.get_loc('rtt_score')] = round(df_display['score'].where(df_display['type']=='rtt').mean()/20,1)
-    res.iloc[0, res.columns.get_loc('no_ltt')] = df_display['type'].where(df_display['type']=='ltt').count()
-    res.iloc[0, res.columns.get_loc('ltt_score')] = round(df_display['score'].where(df_display['type']=='ltt').mean()/20,1)
-    res.iloc[0, res.columns.get_loc('no_utn')] = df_display['type'].where(df_display['type']=='utn').count()
-    res.iloc[0, res.columns.get_loc('utn_score')] = round(df_display['score'].where(df_display['type']=='utn').mean()/20,1)
-    res.iloc[0, res.columns.get_loc('no_lcr')] = df_display['type'].where(df_display['type']=='lcr').count()
-    res.iloc[0, res.columns.get_loc('lcr_score')] = round(df_display['score'].where(df_display['type']=='lcr').mean()/20,1)
-    res.iloc[0, res.columns.get_loc('no_lcl')] = df_display['type'].where(df_display['type']=='lcl').count()
-    res.iloc[0, res.columns.get_loc('lcl_score')] = round(df_display['score'].where(df_display['type']=='lcl').mean()/20,1)
-    res.iloc[0, res.columns.get_loc('no_exa')] = df_display['type'].where(df_display['type']=='exa').count()
-    res.iloc[0, res.columns.get_loc('exa_score')] = round(df_display['score'].where(df_display['type']=='exa').mean()/20,1)
-    res.iloc[0, res.columns.get_loc('no_exd')] = df_display['type'].where(df_display['type']=='exd').count()
-    res.iloc[0, res.columns.get_loc('exd_score')] = round(df_display['score'].where(df_display['type']=='exd').mean()/20,1)
-    res.iloc[0, res.columns.get_loc('focus')] = focus_algo(df_sum, df_display)
-    res.iloc[0, res.columns.get_loc('efficiency')] = efficiency_algo(df_sum)
-    res.iloc[0, res.columns.get_loc('anticipation')] = anticipation_algo(df_sum)
-    res.iloc[0, res.columns.get_loc('control')] = control_algo(df_display)
-    res.iloc[0, res.columns.get_loc('legality')] = legality_algo()
-    overall_performance = round((df_display['score'].mean()/20 + res['focus'][0] + res['efficiency'][0] \
+    if (df_sum.empty==False) & (df_display.empty==False):
+        res.iloc[0, res.columns.get_loc('uuid')] = df_sum['uuid'][0]
+        res.iloc[0, res.columns.get_loc('no_rtt')] = df_display['type'].where(df_display['type']=='rtt').count()
+        res.iloc[0, res.columns.get_loc('rtt_score')] = round(df_display['score'].where(df_display['type']=='rtt').mean()/20,1)
+        res.iloc[0, res.columns.get_loc('no_ltt')] = df_display['type'].where(df_display['type']=='ltt').count()
+        res.iloc[0, res.columns.get_loc('ltt_score')] = round(df_display['score'].where(df_display['type']=='ltt').mean()/20,1)
+        res.iloc[0, res.columns.get_loc('no_utn')] = df_display['type'].where(df_display['type']=='utn').count()
+        res.iloc[0, res.columns.get_loc('utn_score')] = round(df_display['score'].where(df_display['type']=='utn').mean()/20,1)
+        res.iloc[0, res.columns.get_loc('no_lcr')] = df_display['type'].where(df_display['type']=='lcr').count()
+        res.iloc[0, res.columns.get_loc('lcr_score')] = round(df_display['score'].where(df_display['type']=='lcr').mean()/20,1)
+        res.iloc[0, res.columns.get_loc('no_lcl')] = df_display['type'].where(df_display['type']=='lcl').count()
+        res.iloc[0, res.columns.get_loc('lcl_score')] = round(df_display['score'].where(df_display['type']=='lcl').mean()/20,1)
+        res.iloc[0, res.columns.get_loc('no_exa')] = df_display['type'].where(df_display['type']=='exa').count()
+        res.iloc[0, res.columns.get_loc('exa_score')] = round(df_display['score'].where(df_display['type']=='exa').mean()/20,1)
+        res.iloc[0, res.columns.get_loc('no_exd')] = df_display['type'].where(df_display['type']=='exd').count()
+        res.iloc[0, res.columns.get_loc('exd_score')] = round(df_display['score'].where(df_display['type']=='exd').mean()/20,1)
+        res.iloc[0, res.columns.get_loc('focus')] = focus_algo(df_sum, df_display)
+        res.iloc[0, res.columns.get_loc('efficiency')] = efficiency_algo(df_sum)
+        res.iloc[0, res.columns.get_loc('anticipation')] = anticipation_algo(df_sum)
+        res.iloc[0, res.columns.get_loc('control')] = control_algo(df_display)
+        res.iloc[0, res.columns.get_loc('legality')] = legality_algo()
+        overall_performance = round((df_display['score'].mean()/20 + res['focus'][0] + res['efficiency'][0] \
                                  + res['anticipation'][0] + res['control'][0] + res['legality'][0])/6., 1)
-    res.iloc[0, res.columns.get_loc('performance')] = overall_performance
-    
+        res.iloc[0, res.columns.get_loc('performance')] = overall_performance
+    res = res.dropna(how='all')
     return res
 
 
