@@ -1,1 +1,2 @@
-﻿device_id,rot_rate_x,rot_rate_y,rot_rate_z,user_a_x,user_a_y,user_a_ziPad-001,-0.007121256,-0.015037355,0.024813481,-0.000480485,-0.000220416,-0.02103083
+﻿device_id,rot_rate_x,rot_rate_y,rot_rate_z,user_a_x,user_a_y,user_a_z,cam_matrix_11,cam_matrix_12,cam_matrix_13,cam_matrix_21,cam_matrix_22,cam_matrix_23,cam_matrix_31,cam_matrix_32,cam_matrix_33,distortion_mat_1,distortion_mat_2,distortion_mat_3,distortion_mat_4,distortion_mat_5,reso_x,reso_y
+iPad-001,-0.007121256,-0.015037355,0.024813481,-0.000480485,-0.000220416,-0.02103083,,,,,,,,,,,,,,,,
