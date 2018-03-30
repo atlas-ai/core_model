@@ -70,7 +70,8 @@ class Worker(Process):
 
                 if not df_sum.empty:
                     print('UNIQUE ALGORITHM RESULTS:', df_sum['type'].unique())
-
+                    df_sum.to_sql(name='detected_events', con=self.engine, if_exists='append', index=False)
+-                   print('RESULTS SAVED')
                 else:
                     print('ALGORITHM DIDN\'T RETURN ANYTHING')
             except BaseException as e:
