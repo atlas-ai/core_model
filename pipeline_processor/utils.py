@@ -38,7 +38,7 @@ def get_detected_events_for_track(track_uuid, engine):
     query = """
                 SELECT *
                 FROM detected_events
-                WHERE id = '{track_uuid}'
+                WHERE uuid = '{track_uuid}'
                 ORDER BY s_utc
             """.format(track_uuid=track_uuid)
     return pd.read_sql_query(query, con=engine)
