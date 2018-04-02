@@ -63,10 +63,7 @@ def from_quaternion(s, label=None):
     :param label: additional label of the columns names
     :return: dataframe containing quaternion coordinate labeled s,x,y, z
     """
-    if s.empty==False:
-        val = qtr.as_float_array(s)
-    else:
-        val = []
+    val = qtr.as_float_array(s)
     col = pd.Series(['s', 'x', 'y', 'z'])
     if label is not None:
         col = label + col

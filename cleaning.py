@@ -19,7 +19,7 @@ def gps_data(df):
     :param df: raw data dataframe
     :return: cleaned dataframe
     """
-    gps = df[['t','lat','long','alt','speed','course']].copy()
+    gps = df[['t','lat','long','alt','speed','course']].copy(deep=True)
     gps = gps.sort_values(by=['t'])
     gps = gps.reset_index(drop=True)  
     gps.index = pd.to_datetime(gps['t'], unit='s')
@@ -27,11 +27,10 @@ def gps_data(df):
     gps = gps[~gps.isin(['NaN']).any(axis=1)]  
     gps = gps[~gps.isin([0.0]).any(axis=1)] 
     gps = gps[~gps.index.duplicated()]
-    if gps.empty==False:
-        gps['course'] = np.radians(gps['course'])
+    gps['course'].fillna(value=np.NaN, inplace=True)
+    gps['course'] = np.radians(gps['course'])
     
     return gps
-
 
 def imu_data(df):
     """ clean the inputs from imu
@@ -40,12 +39,13 @@ def imu_data(df):
     :return: cleaned dataframe
     """
     imu = df[['t','att_pitch','att_roll','att_yaw','rot_rate_x','rot_rate_y','rot_rate_z',\
-              'g_x','g_y','g_z','user_a_x','user_a_y','user_a_z','m_x','m_y','m_z']].copy()
+              'g_x','g_y','g_z','user_a_x','user_a_y','user_a_z','m_x','m_y','m_z']].copy(deep=True)
     imu = imu.sort_values(by=['t'])
     imu = imu.reset_index(drop=True)       
     imu.index = pd.to_datetime(imu['t'], unit='s')
     imu = imu[~imu.isin(['NaN']).any(axis=1)] 
     imu = imu[~imu.index.duplicated()]
+    imu = imu.dropna(how='all')
 
     return imu
 
