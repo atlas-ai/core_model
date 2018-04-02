@@ -27,7 +27,8 @@ def gps_data(df):
     gps = gps[~gps.isin(['NaN']).any(axis=1)]  
     gps = gps[~gps.isin([0.0]).any(axis=1)] 
     gps = gps[~gps.index.duplicated()]
-    gps['course'] = np.radians(gps['course'])
+    if gps.empty==False:
+        gps['course'] = np.radians(gps['course'])
     
     return gps
 
