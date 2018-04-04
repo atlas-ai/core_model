@@ -267,9 +267,9 @@ def display_track_info(df, code_sys, l1_thr, l2_thr, l3_thr, l4_thr, acc_fac):
             df_display.iloc[i, df_display.columns.get_loc('sec1_code')] = sec_code[0]
             df_display.iloc[i, df_display.columns.get_loc('sec2_code')] = sec_code[1]
             df_display.iloc[i, df_display.columns.get_loc('sec3_code')] = sec_code[2]
-            sec1_idx = code_sys.index.searchsorted(sec_code[0])
-            sec2_idx = code_sys.index.searchsorted(sec_code[1])
-            sec3_idx = code_sys.index.searchsorted(sec_code[2])
+            sec1_idx = code_sys[code_sys['code'] == sec_code[0]].index.tolist()[0]
+            sec2_idx = code_sys[code_sys['code'] == sec_code[1]].index.tolist()[0]
+            sec3_idx = code_sys[code_sys['code'] == sec_code[2]].index.tolist()[0]
             df_display.iloc[i, df_display.columns.get_loc('sec1_desc')] = code_sys['description_chn'].iloc[sec1_idx]
             df_display.iloc[i, df_display.columns.get_loc('sec2_desc')] = code_sys['description_chn'].iloc[sec2_idx]
             df_display.iloc[i, df_display.columns.get_loc('sec3_desc')] = code_sys['description_chn'].iloc[sec3_idx]            

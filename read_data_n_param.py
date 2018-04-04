@@ -64,7 +64,7 @@ def read_code_sys(xlsx_file):
     :param xlsx_file: input parameter file in .xlsx format
     :return : coding information
     """
-    code = pd.read_excel(xlsx_file,index_col=0)
+    code = pd.read_excel(xlsx_file)
     return code
     
  
