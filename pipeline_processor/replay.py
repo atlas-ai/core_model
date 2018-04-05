@@ -19,7 +19,7 @@ def run(track_uuid, new_track_uuid, engine):
         # Iterate through all the measurements and insert them again in the measurements table using the new track_uuid
         current_row = df.iloc[[0]]
 
-        for i in range(1, df.shape[0]):
+        for i in range(1, df.shape[0]+1):
             previous_json = current_row.to_json(orient="records")
             previous_json = json.loads(previous_json)
 
@@ -27,13 +27,14 @@ def run(track_uuid, new_track_uuid, engine):
             curs.execute(insert_query)
             conn.commit()
 
-            next_row_timestamp = df.iloc[i]['t']
-            current_row_timestamp = current_row.iloc[0]['t']
+            if i < df.shape[0]:
+                next_row_timestamp = df.iloc[i]['t']
+                current_row_timestamp = current_row.iloc[0]['t']
 
-            # To emulate the phone sending events at the original speed, we sleep for the time difference between the
-            # current row and the following one
-            time.sleep(next_row_timestamp - current_row_timestamp)
-            current_row = df.iloc[[i]]
+                # To emulate the phone sending events at the original speed, we sleep for the time difference between
+                # the current row and the following one
+                time.sleep(next_row_timestamp - current_row_timestamp)
+                current_row = df.iloc[[i]]
 
         curs.close()
         conn.close()
