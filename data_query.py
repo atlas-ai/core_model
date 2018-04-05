@@ -65,7 +65,9 @@ def severity_bins(z_score, l1_thr, l2_thr, l3_thr, l4_thr, sign, factor=1):
     :return: severity bin value from 1 to 5
     """
     sev_bin = 0.
-    if z_score!=np.NaN:
+    if (z_score==None) or (z_score==np.NaN):
+        sev_bin = 0.
+    else:
         if sign=='pos':
             if z_score<(l1_thr/factor):
                 sev_bin = 1.
