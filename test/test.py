@@ -27,6 +27,7 @@ if __name__ == '__main__':
     tmp_t = min_t
 
     print('\nTOTAL SECONDS IN TRACK:', int(max_t - min_t))
+    print('\nTOTAL MEASUREMENTS IN TRACK:', len(df))
     print('UUID:', uuid_str, '\n')
 
     while tmp_t < max_t:
