@@ -23,12 +23,14 @@ def gps_data(df):
     gps = gps.sort_values(by=['t'])
     gps = gps.reset_index(drop=True)  
     gps.index = pd.to_datetime(gps['t'], unit='s')
+    print('Input gps data length: %s' % gps.shape[0])
     gps = gps[~gps.index.duplicated()]
     gps = gps[~gps.isin(['NaN']).any(axis=1)]  
     gps = gps[~gps.isin([0.0]).any(axis=1)] 
     gps = gps[~gps.index.duplicated()]
     gps['course'].fillna(value=np.NaN, inplace=True)
     gps['course'] = np.radians(gps['course'])
+    print('Clean gps data length: %s' % gps.shape[0])
     
     return gps
 
@@ -43,9 +45,11 @@ def imu_data(df):
     imu = imu.sort_values(by=['t'])
     imu = imu.reset_index(drop=True)       
     imu.index = pd.to_datetime(imu['t'], unit='s')
+    print('Input imu data length: %s' % imu.shape[0])
     imu = imu[~imu.isin(['NaN']).any(axis=1)] 
     imu = imu[~imu.index.duplicated()]
     imu = imu.dropna(how='all')
+    print('Clean imu data length: %s' % imu.shape[0])
 
     return imu
 
@@ -103,7 +107,8 @@ def sampling_control(imu, samp_rate):
     df['m_x'] = interpolation.interpolate_to_index(imu['m_x'], idx, method='time')
     df['m_y'] = interpolation.interpolate_to_index(imu['m_y'], idx, method='time')
     df['m_z'] = interpolation.interpolate_to_index(imu['m_z'], idx, method='time') 
-       
+    print('sampling rate control imu data length: %s' % df.shape[0])  
+    
     return df
 
 
