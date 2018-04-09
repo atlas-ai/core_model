@@ -20,6 +20,9 @@ def run(track_uuid, new_track_uuid, engine):
         current_row = df.iloc[[0]]
 
         for i in range(1, df.shape[0]+1):
+            if i%1000 == 0:
+                print('REPLAY NEW TRACK UUID {}: INSERTED {} RECORDS OUT OF {}'.format(new_track_uuid, i, df.shape[0]))
+
             previous_json = current_row.to_json(orient="records")
             previous_json = json.loads(previous_json)
 
