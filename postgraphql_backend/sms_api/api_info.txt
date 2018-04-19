@@ -1,0 +1,9 @@
+http://mt.10690404.com/receive.do?Account=ATLAS&Password=ATLAS111&Fmt=json
+
+
+MESSAGE
+http://mt.10690404.com/send.do?Account=ATLAS&Password=ATLAS111&Mobile=18616721479&Content=test&Exno=0&Fmt=json
+
+
+BALANCE
+http://mt.10690404.com/getUser.do?Account=ATLAS&Password=ATLAS111&Fmt=json
