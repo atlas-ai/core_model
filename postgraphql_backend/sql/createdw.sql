@@ -1,3 +1,4 @@
+
 CREATE SCHEMA api;
 CREATE SCHEMA backend;
 
@@ -18,9 +19,9 @@ DROP TABLE IF EXISTS api.users CASCADE;
 CREATE TABLE api.users (
 	id SERIAL PRIMARY KEY,
 	school_id int REFERENCES api.school, -- Null for Super admin
-	firstname varchar,
-  lastname varchar,
-	phone bigint,
+	first_name varchar,
+  last_name varchar,
+	phone bigint UNIQUE,
   picture_link text
 );
 
@@ -38,8 +39,13 @@ INSERT INTO backend.user_roles (id, role_name) VALUES (4, 'student');
 DROP TABLE IF EXISTS backend.user_account CASCADE;
 CREATE TABLE backend.user_account (
 	id int REFERENCES api.users,
-	password text NOT NULL,
+	password_hash text NOT NULL,
 	role_id int REFERENCES backend.user_roles NOT NULL
+);
+
+CREATE  TYPE api.jwt_token as (
+  role text,
+	phone bigint
 );
 
 
@@ -173,8 +179,8 @@ acc_3	float,
 acc_4	float,
 acc_5	float,
 acc_6	float,
-acc_7	float,
 acc_8	float,
+acc_7	float,
 acc_9 float,
 acc_10 float,
 acc_11 float,

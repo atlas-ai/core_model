@@ -11,8 +11,9 @@ RUN POSTRAPHILE USING jwtToken
 ```
 postgraphile -c $DB_CONNECTION_STRING\
   --schema api\
-  --watch --token $POSTGRAPHILE_SECRET \
-  --secret 'keyboard_kitten' --port $POSTGRAPHILE_PORT
+  --watch --token api.jwt_token \
+  --secret $POSTGRAPHILE_SECRET  --port $POSTGRAPHILE_PORT \
+  --default-role anonymous
 ```
 
 
