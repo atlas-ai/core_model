@@ -127,9 +127,9 @@ begin
     ORDER BY id desc LIMIT 1)>now()
   THEN
 
-    return 'CODE VALID';
+    return 'EXISTS';
   ELSE
-    return 'CODE ERROR';
+    return 'DOESNT EXIST';
   END IF;
 
 
@@ -149,7 +149,7 @@ create function api.register_user(
   first_name text,
   last_name text,
   password text,
-  role_id int,
+  role_id int
 ) returns api.users as $$
 declare
   users api.users;
@@ -203,12 +203,4 @@ where a.id = (Select u.id FROM api.users as u WHERE u.phone=18616721479);
 
 comment on function forum_example.register_person(text, text, text, text) is 'Registers a single user and creates an account in our forum.';
 ```
-
-
-
-SELECT extract(epoch from (now()-expiration_date)) FROM backend.identification_codes WHERE id=92;
-
--- TEST IF CODE
-SELECT extract(epoch from now()- max(expiration_date))>300
-from backend.identification_codes as a
-WHERE phone=18616721479 and code=XXX;
+  
