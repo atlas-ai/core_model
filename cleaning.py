@@ -78,10 +78,11 @@ def sampling_control(imu, samp_rate):
     
     recNo = 0
     imuLen = df_T.shape[0]
-    for i in range(imuLen):
-        for j in range(int(df_T['n'][i]-1)):
-            imu_infill.iloc[recNo, imu_infill.columns.get_loc('t')] = df_T['sT'][i]+(j+1)*df_T['dT'][i]
-            recNo = recNo + 1
+    if imuLen>1:
+        for i in range(imuLen):
+            for j in range(int(df_T['n'][i]-1)):
+                imu_infill.iloc[recNo, imu_infill.columns.get_loc('t')] = df_T['sT'][i]+(j+1)*df_T['dT'][i]
+                recNo = recNo + 1
         
     imu_infill = imu_infill.dropna(how='all')
     imu_infill.index = pd.to_datetime(imu_infill['t'], unit='s')
